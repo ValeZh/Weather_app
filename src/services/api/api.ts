@@ -1,14 +1,15 @@
 // Need to use the React-specific entry point to import createApi
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { Weather } from './types';
+import { WeatherData } from './types';
 
 // Define a service using a base URL and expected endpoints
 export const weatherApi = createApi({
     reducerPath: 'weatherApi',
-    baseQuery: fetchBaseQuery({ baseUrl: 'https://jsonplaceholder.typicode.com' }),
+    baseQuery: fetchBaseQuery({ baseUrl: 'http://dataservice.accuweather.com' }),
     endpoints: builder => ({
-        getAllPosts: builder.query<Weather[], string>({
-            query: () => '/post',
+        getAllPosts: builder.query<WeatherData, string>({
+            query: (locationId) => `/forecasts/v1/daily/1day/${locationId}?apikey=6XpRpAFnCiKespheTuuJnev2ovVsP1GV`,
+
         }),
     }),
 });

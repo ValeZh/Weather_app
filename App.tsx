@@ -12,24 +12,29 @@ import {
   View,
 } from 'react-native';
 import { useGetAllPostsQuery } from './src/services/api/api';
+import { Provider } from 'react-redux';
+import { store } from './src/store';
+import Weather from './src/screens/Weather';
+
 
 
 function App(): React.JSX.Element {
-  const data = useGetAllPostsQuery;
-  console.log(data);
   return (
-    <View style= {styles.mainContainer}>
-      <Text> Weather App</Text>
-    </View>
+    <Provider store={store}>
+      <Weather/>
+    </Provider>
   );
 }
 
 const styles = StyleSheet.create({
   mainContainer: {
-    backgroundColor: 'yellow',
+    backgroundColor: 'red',
     alignItems : 'center',
     justifyContent : 'center',
+    flex : 1,
   },
+
+
 
 });
 
