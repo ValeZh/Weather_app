@@ -14,14 +14,14 @@ import {
 import { useGetAllPostsQuery } from './src/services/api/api';
 import { Provider } from 'react-redux';
 import { store } from './src/store';
-import Weather from './src/screens/Weather';
+import LocationSelector from './src/screens/LocationSelector';
 
 
 
 function App(): React.JSX.Element {
   return (
     <Provider store={store}>
-      <Weather/>
+      <LocationSelector/>
     </Provider>
   );
 }
