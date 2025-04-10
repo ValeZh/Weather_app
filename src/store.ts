@@ -1,7 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit'
 // Or from '@reduxjs/toolkit/query/react'
 import { setupListeners } from '@reduxjs/toolkit/query'
-import {weatherApi} from './services/api/api'
+import {weatherApi} from './services/api/weatherApi'
 import { locationApi } from './services/api/locationApi';
 export const store = configureStore({
   reducer: {

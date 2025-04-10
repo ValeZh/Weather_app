@@ -1,10 +1,10 @@
-type Temperature = {
+export type Temperature = {
   Value: number;
   Unit: string;
   UnitType: number;
 };
 
-type DailyForecast = {
+export type DailyForecast = {
   Date: string;
   EpochDate: number;
   Temperature: {
@@ -25,7 +25,7 @@ type DailyForecast = {
   Link: string;
 };
 
-type WeatherHeadline = {
+export type WeatherHeadline = {
   EffectiveDate: string;
   EffectiveEpochDate: number;
   Severity: number;
