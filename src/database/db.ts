@@ -14,6 +14,7 @@ export const createTables = () => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         location_id TEXT,
         fetchTime INTEGER,
+        epochDate INTEGER,  -- Нове поле для збереження Epoch дати
         dayTemperature REAL,
         nightTemperature REAL,
         dayPhrase TEXT,
@@ -37,7 +38,7 @@ export const createTables = () => {
   });
 };
 
-// Збереження даних про погоду
+// Збереження даних про погоду для 5 днів
 export const saveWeatherData = (locationId: string, forecasts: any[]) => {
   const fetchTime = Date.now();
 
@@ -47,11 +48,12 @@ export const saveWeatherData = (locationId: string, forecasts: any[]) => {
       const nightTemp = forecast.Temperature.Minimum.Value;
       const dayPhrase = forecast.Day.IconPhrase;
       const nightPhrase = forecast.Night.IconPhrase;
+      const epochDate = forecast.EpochDate; // Отримуємо EpochDate із прогнозу
 
       tx.executeSql(
-        `INSERT INTO weather (location_id, fetchTime, dayTemperature, nightTemperature, dayPhrase, nightPhrase)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [locationId, fetchTime, dayTemp, nightTemp, dayPhrase, nightPhrase],
+        `INSERT INTO weather (location_id, fetchTime, epochDate, dayTemperature, nightTemperature, dayPhrase, nightPhrase)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [locationId, fetchTime, epochDate, dayTemp, nightTemp, dayPhrase, nightPhrase],
         () => console.log(`✅ Saved forecast for ${locationId}: ${dayTemp}° / ${nightTemp}°`),
         (error) => console.error("❌ Error saving weather data:", error)
       );

@@ -4,8 +4,10 @@ import { getCachedWeather } from "../utils/weatherCache";
 
 type WeatherItem = {
   dateTime: string;
-  temperature: string;
-  phrase: string;
+  dayTemperature: string;
+  dayPhase: string;
+  nightTemperature: string;
+  nightPhase: string;
 };
 
 const Weather = () => {
@@ -25,8 +27,9 @@ const Weather = () => {
 
             const dayTemp = item.dayTemperature;
             const nightTemp = item.nightTemperature;
-            const phrase = item.dayPhrase ?? "Неизвестно";
-            const fetchTime = item.fetchTime;
+            const dayPhase = item.dayPhrase ?? "Неизвестно";  // Исправлено
+            const nightPhase = item.nightPhrase ?? "Неизвестно";  // Исправлено
+            const epochDate = item.epochDate;  // Добавлено поле epochDate
 
             // Проверка на существование и валидность чисел
             if (
@@ -38,15 +41,27 @@ const Weather = () => {
               console.warn(`⚠️ Неверные температуры для item ${index}:`, item);
               return {
                 dateTime: "Неизвестная дата",
-                temperature: "Неверные данные",
-                phrase,
+                dayTemperature: "Неверные данные",
+                dayPhase,
+                nightTemperature: "Неверные данные",
+                nightPhase,
               };
             }
 
+            // Если epochDate хранится в секундах, умножаем на 1000
+            const formattedEpochDate = epochDate * 1000;
+            const formattedDate = new Date(formattedEpochDate).toLocaleDateString();
+
+            // Преобразуем Фаренгейты в Цельсии
+            const dayTempCelsius = ((dayTemp - 32) * 5) / 9;
+            const nightTempCelsius = ((nightTemp - 32) * 5) / 9;
+
             return {
-              dateTime: new Date(fetchTime).toLocaleDateString(),
-              temperature: `${Math.round(nightTemp-32)}°C ~ ${Math.round(dayTemp-32)}°C`,
-              phrase,
+              dateTime: formattedDate,
+              dayTemperature: `${Math.round(dayTempCelsius)}°C`,  // Применен правильный перевод
+              dayPhase,
+              nightTemperature: `${Math.round(nightTempCelsius)}°C`,  // Применен правильный перевод
+              nightPhase,
             };
           });
 
@@ -73,8 +88,10 @@ const Weather = () => {
         weather.map((item, index) => (
           <View key={index} style={styles.card}>
             <Text style={styles.date}>{item.dateTime}</Text>
-            <Text style={styles.phrase}>{item.phrase}</Text>
-            <Text style={styles.temp}>{item.temperature}</Text>
+            <Text style={styles.temp}>Дневная температура: {item.dayTemperature}</Text>
+            <Text style={styles.phase}>Погода дня: {item.dayPhase}</Text>
+            <Text style={styles.temp}>Ночная температура: {item.nightTemperature}</Text>
+            <Text style={styles.phase}>Погода ночи: {item.nightPhase}</Text>
           </View>
         ))
       ) : (
@@ -99,18 +116,19 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     width: "100%",
     backgroundColor: "#fff",
-    alignItems: "center",
+    alignItems: "flex-start", // Выравнивание текста по левому краю
   },
   date: {
     fontWeight: "bold",
     marginBottom: 5,
   },
-  phrase: {
-    fontStyle: "italic",
+  temp: {
+    fontSize: 16,
     marginBottom: 5,
   },
-  temp: {
-    fontSize: 18,
+  phase: {
+    fontStyle: "italic",
+    marginBottom: 5,
   },
 });
 

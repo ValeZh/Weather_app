@@ -34,8 +34,8 @@ export const getCachedWeather = async () => {
     console.log("Отправка запроса для получения прогноза для локации:", locationId);
 
     try {
-      // Делаем запрос к API
-      const result = await store.dispatch(weatherApi.endpoints.getDailyForecast.initiate(locationId));
+      // Делаем запрос к API используя getFiveDayForecast
+      const result = await store.dispatch(weatherApi.endpoints.getFiveDayForecast.initiate(locationId));
 
       console.log("Результат запроса к API:", result);
 
@@ -68,7 +68,7 @@ export const getCachedWeather = async () => {
     } else {
       // Если данных нет, запросим их из API
       console.log("Данных нет в базе, делаем запрос...");
-      const result = await store.dispatch(weatherApi.endpoints.getDailyForecast.initiate(locationId));
+      const result = await store.dispatch(weatherApi.endpoints.getFiveDayForecast.initiate(locationId));
 
       if (result && "data" in result && result.data) {
         const dailyForecasts = result.data.DailyForecasts;
