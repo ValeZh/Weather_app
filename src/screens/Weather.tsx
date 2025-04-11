@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { getCachedWeather } from "../utils/weatherCache";
 
 type WeatherItem = {
   dateTime: string;
-  temperature: number;
-  iconPhrase: string;
-  epochDate: number;
+  temperature: string;
+  phrase: string;
 };
 
 const Weather = () => {
@@ -17,24 +16,43 @@ const Weather = () => {
     const load = async () => {
       console.log("⏳ Загрузка погоды начата");
       try {
-        const data = await getCachedWeather();
-        console.log("📦 Данные из кеша или API:", data);
+        const result = await getCachedWeather();
+        console.log("📦 Полученные данные из кеша или БД:", result);
 
-        if (data && Array.isArray(data)) {
-          const formatted = data.map((f: any, index: number) => {
-            const item = {
-              dateTime: f.Date,
-              temperature: convertToCelsius(f.Temperature?.Maximum?.Value ?? 0),
-              iconPhrase: f.Day?.IconPhrase ?? "Неизвестно",
-              epochDate: f.EpochDate ?? index, // fallback для key
+        if (result && Array.isArray(result)) {
+          const formatted = result.map((item, index) => {
+            console.log(`📋 Элемент ${index}:`, item);
+
+            const dayTemp = item.dayTemperature;
+            const nightTemp = item.nightTemperature;
+            const phrase = item.dayPhrase ?? "Неизвестно";
+            const fetchTime = item.fetchTime;
+
+            // Проверка на существование и валидность чисел
+            if (
+              typeof dayTemp !== "number" ||
+              typeof nightTemp !== "number" ||
+              isNaN(dayTemp) ||
+              isNaN(nightTemp)
+            ) {
+              console.warn(`⚠️ Неверные температуры для item ${index}:`, item);
+              return {
+                dateTime: "Неизвестная дата",
+                temperature: "Неверные данные",
+                phrase,
+              };
+            }
+
+            return {
+              dateTime: new Date(fetchTime).toLocaleDateString(),
+              temperature: `${Math.round(nightTemp-32)}°C ~ ${Math.round(dayTemp-32)}°C`,
+              phrase,
             };
-            console.log("📅 Прогноз:", item);
-            return item;
           });
 
           setWeather(formatted);
         } else {
-          console.warn("⚠️ Неверный формат данных погоды:", data);
+          console.warn("⚠️ Данные не массив или отсутствуют:", result);
         }
       } catch (error) {
         console.error("❌ Ошибка загрузки погоды:", error);
@@ -48,37 +66,51 @@ const Weather = () => {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       {loading ? (
         <Text>Загрузка погоды...</Text>
       ) : weather.length > 0 ? (
-        weather.map((item) => (
-          <View key={item.epochDate} style={styles.card}>
-            <Text>{item.dateTime}</Text>
-            <Text>{item.iconPhrase}</Text>
-            <Text>{item.temperature} °C</Text>
+        weather.map((item, index) => (
+          <View key={index} style={styles.card}>
+            <Text style={styles.date}>{item.dateTime}</Text>
+            <Text style={styles.phrase}>{item.phrase}</Text>
+            <Text style={styles.temp}>{item.temperature}</Text>
           </View>
         ))
       ) : (
         <Text>Нет данных о погоде</Text>
       )}
-    </View>
+    </ScrollView>
   );
 };
 
-const convertToCelsius = (fahrenheit: number) => {
-  return Math.round(((fahrenheit - 32) * 5) / 9);
-};
-
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "center", padding: 20 },
+  container: {
+    flexGrow: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    backgroundColor: "#f2f2f2",
+  },
   card: {
     marginBottom: 15,
-    padding: 10,
+    padding: 15,
     borderWidth: 1,
     borderRadius: 10,
     width: "100%",
+    backgroundColor: "#fff",
     alignItems: "center",
+  },
+  date: {
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  phrase: {
+    fontStyle: "italic",
+    marginBottom: 5,
+  },
+  temp: {
+    fontSize: 18,
   },
 });
 

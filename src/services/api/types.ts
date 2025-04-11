@@ -42,6 +42,47 @@ export type WeatherData = {
   DailyForecasts: DailyForecast[];
 };
 
+export type WeatherForecastResponse = {
+  Headline: {
+    EffectiveDate: string;
+    EffectiveEpochDate: number;
+    Severity: number;
+    Text: string;
+    Category: string;
+    EndDate: string;
+    EndEpochDate: number;
+    MobileLink: string;
+    Link: string;
+  };
+  DailyForecasts: FiveDayForecast[];
+};
+
+export type FiveDayForecast = {
+  Date: string;
+  EpochDate: number;
+  Temperature: {
+    Minimum: TemperatureValue;
+    Maximum: TemperatureValue;
+  };
+  Day: ForecastDetails;
+  Night: ForecastDetails;
+  Sources: string[];
+  MobileLink: string;
+  Link: string;
+};
+
+export type TemperatureValue = {
+  Value: number;
+  Unit: "F" | "C"; // AccuWeather зазвичай повертає у F, але можна розширити
+  UnitType: number;
+};
+
+export type ForecastDetails = {
+  Icon: number;
+  IconPhrase: string;
+  HasPrecipitation: boolean;
+};
+
 
 
 type Region = {
