@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { getCachedWeather } from "../utils/weatherCache";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type WeatherItem = {
   dateTime: string;
@@ -13,55 +14,54 @@ type WeatherItem = {
 const Weather = () => {
   const [weather, setWeather] = useState<WeatherItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [locationId, setLocationId] = useState<string | null>(null);
 
   useEffect(() => {
-    const load = async () => {
+    const loadWeather = async () => {
       console.log("⏳ Загрузка погоды начата");
+
       try {
+        const savedId = await AsyncStorage.getItem("locationId");
+        console.log("📍 Загружен locationId из памяти:", savedId);
+        setLocationId(savedId);
+
+        if (!savedId) {
+          console.warn("⚠️ Location ID отсутствует. Погода не будет загружена.");
+          return;
+        }
+
         const result = await getCachedWeather();
         console.log("📦 Полученные данные из кеша или БД:", result);
 
         if (result && Array.isArray(result)) {
           const formatted = result.map((item, index) => {
-            console.log(`📋 Элемент ${index}:`, item);
+            const { dayTemperature, nightTemperature, dayPhrase, nightPhrase, epochDate } = item;
 
-            const dayTemp = item.dayTemperature;
-            const nightTemp = item.nightTemperature;
-            const dayPhase = item.dayPhrase ?? "Неизвестно";  // Исправлено
-            const nightPhase = item.nightPhrase ?? "Неизвестно";  // Исправлено
-            const epochDate = item.epochDate;  // Добавлено поле epochDate
-
-            // Проверка на существование и валидность чисел
             if (
-              typeof dayTemp !== "number" ||
-              typeof nightTemp !== "number" ||
-              isNaN(dayTemp) ||
-              isNaN(nightTemp)
+              typeof dayTemperature !== "number" ||
+              typeof nightTemperature !== "number" ||
+              isNaN(dayTemperature) ||
+              isNaN(nightTemperature)
             ) {
-              console.warn(`⚠️ Неверные температуры для item ${index}:`, item);
               return {
                 dateTime: "Неизвестная дата",
                 dayTemperature: "Неверные данные",
-                dayPhase,
+                dayPhase: dayPhrase ?? "Неизвестно",
                 nightTemperature: "Неверные данные",
-                nightPhase,
+                nightPhase: nightPhrase ?? "Неизвестно",
               };
             }
 
-            // Если epochDate хранится в секундах, умножаем на 1000
-            const formattedEpochDate = epochDate * 1000;
-            const formattedDate = new Date(formattedEpochDate).toLocaleDateString();
-
-            // Преобразуем Фаренгейты в Цельсии
-            const dayTempCelsius = ((dayTemp - 32) * 5) / 9;
-            const nightTempCelsius = ((nightTemp - 32) * 5) / 9;
+            const date = new Date(epochDate * 1000).toLocaleDateString();
+            const dayC = `${Math.round((dayTemperature - 32) * 5 / 9)}°C`;
+            const nightC = `${Math.round((nightTemperature - 32) * 5 / 9)}°C`;
 
             return {
-              dateTime: formattedDate,
-              dayTemperature: `${Math.round(dayTempCelsius)}°C`,  // Применен правильный перевод
-              dayPhase,
-              nightTemperature: `${Math.round(nightTempCelsius)}°C`,  // Применен правильный перевод
-              nightPhase,
+              dateTime: date,
+              dayTemperature: dayC,
+              dayPhase: dayPhrase ?? "Неизвестно",
+              nightTemperature: nightC,
+              nightPhase: nightPhrase ?? "Неизвестно",
             };
           });
 
@@ -77,14 +77,29 @@ const Weather = () => {
       }
     };
 
-    load();
+    loadWeather();
   }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" />
+        <Text>Загрузка погоды...</Text>
+      </View>
+    );
+  }
+
+  if (!locationId) {
+    return (
+      <View style={styles.container}>
+        <Text>❌ Location ID не найден. Пожалуйста, выберите местоположение.</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {loading ? (
-        <Text>Загрузка погоды...</Text>
-      ) : weather.length > 0 ? (
+      {weather.length > 0 ? (
         weather.map((item, index) => (
           <View key={index} style={styles.card}>
             <Text style={styles.date}>{item.dateTime}</Text>
@@ -116,7 +131,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     width: "100%",
     backgroundColor: "#fff",
-    alignItems: "flex-start", // Выравнивание текста по левому краю
+    alignItems: "flex-start",
   },
   date: {
     fontWeight: "bold",

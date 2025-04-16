@@ -17,48 +17,54 @@ export const getCachedWeather = async () => {
 
   if (!locationId) {
     console.error("Ошибка: locationId не найден в AsyncStorage.");
-    return null;  // Возвращаем null, если locationId не найден
+    return null;
   }
 
   console.log("🚀 locationId:", locationId);
 
-  await createTables(); // Создаем таблицы, если они еще не созданы
+  await createTables();
 
   const lastFetch = await checkLastFetchTime(locationId);
   const now = Date.now();
 
   console.log("lastFetch:", lastFetch, "Текущее время:", now, "Прошло времени:", now - lastFetch);
 
-  // Если прошло больше 12 часов с последнего запроса или таблица пуста, обновляем данные
+  const fetchAndFormat = async () => {
+    const result = await store.dispatch(
+      weatherApi.endpoints.getFiveDayForecast.initiate(locationId)
+    );
+
+    console.log("Результат запроса к API:", result);
+
+    if (result && "data" in result && result.data) {
+      const dailyForecasts = result.data.DailyForecasts;
+
+      // Преобразование под формат WeatherItem
+      const formatted = dailyForecasts.map((day: any) => ({
+        epochDate: Math.floor(new Date(day.Date).getTime() / 1000),
+        dayTemperature: day.Temperature.Maximum.Value,
+        nightTemperature: day.Temperature.Minimum.Value,
+        dayPhrase: day.Day.IconPhrase,
+        nightPhrase: day.Night.IconPhrase,
+      }));
+
+      // Сохранение в базу
+      await saveWeatherData(locationId, formatted);
+      await updateLastFetchTime(locationId);
+
+      console.log("📦 Сформатированный прогноз:", formatted);
+
+      return formatted;
+    } else {
+      console.error("Ошибка получения данных с API:", result?.error ?? "Неизвестная ошибка");
+      return null;
+    }
+  };
+
   if (!lastFetch || now - lastFetch >= TWELVE_HOURS) {
     console.log("Отправка запроса для получения прогноза для локации:", locationId);
-
-    try {
-      // Делаем запрос к API используя getFiveDayForecast
-      const result = await store.dispatch(weatherApi.endpoints.getFiveDayForecast.initiate(locationId));
-
-      console.log("Результат запроса к API:", result);
-
-      // Проверка успешного получения данных
-      if (result && "data" in result && result.data) {
-        const dailyForecasts = result.data.DailyForecasts;
-        
-        // Сохраняем данные в базе данных
-        await saveWeatherData(locationId, dailyForecasts);
-        await updateLastFetchTime(locationId);
-
-        console.log("Данные успешно обновлены и сохранены.");
-        return dailyForecasts;
-      } else {
-        console.error("Ошибка получения данных с API:", result?.error ?? "Неизвестная ошибка");
-        return null;  // Возвращаем null при ошибке
-      }
-    } catch (error) {
-      console.error("Ошибка при запросе к API:", error);
-      return null;  // Возвращаем null при ошибке запроса
-    }
+    return await fetchAndFormat();
   } else {
-    // Если данные не старые или уже есть данные в базе, загружаем их из локальной базы данных
     console.log("Загружаем данные из кэша...");
     const localData = await loadWeatherData(locationId);
 
@@ -66,23 +72,8 @@ export const getCachedWeather = async () => {
       console.log("Загруженные данные из базы:", localData);
       return localData;
     } else {
-      // Если данных нет, запросим их из API
       console.log("Данных нет в базе, делаем запрос...");
-      const result = await store.dispatch(weatherApi.endpoints.getFiveDayForecast.initiate(locationId));
-
-      if (result && "data" in result && result.data) {
-        const dailyForecasts = result.data.DailyForecasts;
-        
-        // Сохраняем данные в базе данных
-        await saveWeatherData(locationId, dailyForecasts);
-        await updateLastFetchTime(locationId);
-
-        console.log("Данные успешно обновлены и сохранены.");
-        return dailyForecasts;
-      } else {
-        console.error("Ошибка получения данных с API:", result?.error ?? "Неизвестная ошибка");
-        return null;  // Возвращаем null при ошибке
-      }
+      return await fetchAndFormat();
     }
   }
 };

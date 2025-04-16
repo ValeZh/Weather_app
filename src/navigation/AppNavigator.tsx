@@ -34,7 +34,11 @@ const AppNavigator = () => {
   return (
     <Stack.Navigator initialRouteName={initialRoute}>
       <Stack.Screen name="LocationSelector" component={LocationSelector} />
-      <Stack.Screen name="Weather" component={Weather} initialParams={{ locationId: storedLocationId! }} />
+      <Stack.Screen 
+        name="Weather" 
+        component={Weather} 
+        initialParams={{ locationId: storedLocationId! }} 
+      />
     </Stack.Navigator>
   );
 };
