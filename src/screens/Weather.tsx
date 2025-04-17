@@ -6,9 +6,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 type WeatherItem = {
   dateTime: string;
   dayTemperature: string;
-  dayPhase: string;
+  dayPhrase: string;
   nightTemperature: string;
-  nightPhase: string;
+  nightPhrase: string;
 };
 
 const Weather = () => {
@@ -18,62 +18,49 @@ const Weather = () => {
 
   useEffect(() => {
     const loadWeather = async () => {
-      console.log("⏳ Загрузка погоды начата");
-
+      setLoading(true);
       try {
         const savedId = await AsyncStorage.getItem("locationId");
-        console.log("📍 Загружен locationId из памяти:", savedId);
-        setLocationId(savedId);
-
         if (!savedId) {
-          console.warn("⚠️ Location ID отсутствует. Погода не будет загружена.");
+          console.warn("⚠️ Location ID отсутствует.");
+          return;
+        }
+        setLocationId(savedId);
+        console.log("📍 Загружен locationId из памяти:", savedId);
+
+        const result = await getCachedWeather();
+        if (!result) {
+          console.warn("⚠️ Не удалось получить прогноз");
+          setWeather([]);
           return;
         }
 
-        const result = await getCachedWeather();
-        console.log("📦 Полученные данные из кеша или БД:", result);
+        const formatted = result.map(item => {
+          const {
+            epochDate,
+            dayTemperature,
+            nightTemperature,
+            dayPhrase,
+            nightPhrase
+          } = item;
 
-        if (result && Array.isArray(result)) {
-          const formatted = result.map((item, index) => {
-            const { dayTemperature, nightTemperature, dayPhrase, nightPhrase, epochDate } = item;
+          const date = new Date(epochDate * 1000)
+            .toLocaleDateString("uk-UA");
 
-            if (
-              typeof dayTemperature !== "number" ||
-              typeof nightTemperature !== "number" ||
-              isNaN(dayTemperature) ||
-              isNaN(nightTemperature)
-            ) {
-              return {
-                dateTime: "Неизвестная дата",
-                dayTemperature: "Неверные данные",
-                dayPhase: dayPhrase ?? "Неизвестно",
-                nightTemperature: "Неверные данные",
-                nightPhase: nightPhrase ?? "Неизвестно",
-              };
-            }
+          return {
+            dateTime: date,
+            dayTemperature: `${Math.round((dayTemperature - 32) * 5 / 9)}°C`,
+            dayPhrase: dayPhrase ?? "Неизвестно",
+            nightTemperature: `${Math.round((nightTemperature - 32) * 5 / 9)}°C`,
+            nightPhrase: nightPhrase ?? "Неизвестно",
+          };
+        });
 
-            const date = new Date(epochDate * 1000).toLocaleDateString();
-            const dayC = `${Math.round((dayTemperature - 32) * 5 / 9)}°C`;
-            const nightC = `${Math.round((nightTemperature - 32) * 5 / 9)}°C`;
-
-            return {
-              dateTime: date,
-              dayTemperature: dayC,
-              dayPhase: dayPhrase ?? "Неизвестно",
-              nightTemperature: nightC,
-              nightPhase: nightPhrase ?? "Неизвестно",
-            };
-          });
-
-          setWeather(formatted);
-        } else {
-          console.warn("⚠️ Данные не массив или отсутствуют:", result);
-        }
-      } catch (error) {
-        console.error("❌ Ошибка загрузки погоды:", error);
+        setWeather(formatted);
+      } catch (e) {
+        console.error("❌ Ошибка загрузки погоды:", e);
       } finally {
         setLoading(false);
-        console.log("✅ Загрузка завершена");
       }
     };
 
@@ -100,13 +87,13 @@ const Weather = () => {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       {weather.length > 0 ? (
-        weather.map((item, index) => (
-          <View key={index} style={styles.card}>
+        weather.map(item => (
+          <View key={item.dateTime} style={styles.card}>
             <Text style={styles.date}>{item.dateTime}</Text>
             <Text style={styles.temp}>Дневная температура: {item.dayTemperature}</Text>
-            <Text style={styles.phase}>Погода дня: {item.dayPhase}</Text>
+            <Text style={styles.phase}>Погода дня: {item.dayPhrase}</Text>
             <Text style={styles.temp}>Ночная температура: {item.nightTemperature}</Text>
-            <Text style={styles.phase}>Погода ночи: {item.nightPhase}</Text>
+            <Text style={styles.phase}>Погода ночи: {item.nightPhrase}</Text>
           </View>
         ))
       ) : (

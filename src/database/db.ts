@@ -1,13 +1,12 @@
+// ✅ Обновлённый db.ts
 import SQLite from "react-native-sqlite-storage";
 
-// Відкриття бази даних
 const db = SQLite.openDatabase(
   { name: "weather.db", location: "default" },
   () => console.log("📦 Database opened"),
   (error) => console.error("❌ Database error: ", error)
 );
 
-// Створення таблиць
 export const createTables = () => {
   db.transaction((tx) => {
     tx.executeSql(
@@ -19,7 +18,9 @@ export const createTables = () => {
         dayTemperature REAL,
         nightTemperature REAL,
         dayPhrase TEXT,
-        nightPhrase TEXT
+        nightPhrase TEXT,
+        weatherIdDay INTEGER,
+        weatherIdNight INTEGER
       )`,
       [],
       () => console.log("✅ Weather table created!"),
@@ -39,14 +40,12 @@ export const createTables = () => {
   });
 };
 
-// Збереження даних про погоду
 export const saveWeatherData = async (locationId: string, weatherItems: any[]) => {
   return new Promise<void>((resolve, reject) => {
     const fetchTime = Date.now();
 
     db.transaction(
       (tx) => {
-        // Видалення старих записів
         tx.executeSql(
           `DELETE FROM weather WHERE location_id = ?`,
           [locationId],
@@ -57,11 +56,14 @@ export const saveWeatherData = async (locationId: string, weatherItems: any[]) =
           }
         );
 
-        // Додавання нових
         for (const item of weatherItems) {
           tx.executeSql(
-            `INSERT INTO weather (location_id, fetchTime, epochDate, dayTemperature, nightTemperature, dayPhrase, nightPhrase)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO weather (
+              location_id, fetchTime, epochDate,
+              dayTemperature, nightTemperature,
+              dayPhrase, nightPhrase,
+              weatherIdDay, weatherIdNight
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               locationId,
               fetchTime,
@@ -70,6 +72,8 @@ export const saveWeatherData = async (locationId: string, weatherItems: any[]) =
               item.nightTemperature,
               item.dayPhrase,
               item.nightPhrase,
+              item.weatherIdDay,
+              item.weatherIdNight,
             ],
             () => console.log("✅ Додано прогноз:", item),
             (_, error) => {
@@ -85,14 +89,13 @@ export const saveWeatherData = async (locationId: string, weatherItems: any[]) =
       },
       () => {
         console.log("✅ Усі прогнози збережені.");
-        logWeatherTable(); // Показати вміст таблиці після збереження
+        logWeatherTable();
         resolve();
       }
     );
   });
 };
 
-// Завантаження погоди з БД
 export const loadWeatherData = (locationId: string) => {
   return new Promise<any[]>((resolve, reject) => {
     db.transaction((tx) => {
@@ -113,7 +116,6 @@ export const loadWeatherData = (locationId: string) => {
   });
 };
 
-// Перевірка останнього часу запиту
 export const checkLastFetchTime = (locationId: string) => {
   return new Promise<number>((resolve, reject) => {
     db.transaction((tx) => {
@@ -133,7 +135,6 @@ export const checkLastFetchTime = (locationId: string) => {
   });
 };
 
-// Оновлення часу останнього запиту
 export const updateLastFetchTime = (locationId: string) => {
   const time = Date.now();
   db.transaction((tx) => {
@@ -146,14 +147,13 @@ export const updateLastFetchTime = (locationId: string) => {
       [locationId, locationId, time],
       () => {
         console.log("🔄 Last fetch time updated!");
-        logLastFetchTable(); // Показати вміст таблиці
+        logLastFetchTable();
       },
       (error) => console.error("❌ Помилка оновлення часу останнього запиту:", error)
     );
   });
 };
 
-// 📋 Вивід вмісту таблиці weather
 const logWeatherTable = () => {
   db.transaction((tx) => {
     tx.executeSql(
@@ -170,7 +170,6 @@ const logWeatherTable = () => {
   });
 };
 
-// 📋 Вивід вмісту таблиці last_fetch_time
 const logLastFetchTable = () => {
   db.transaction((tx) => {
     tx.executeSql(

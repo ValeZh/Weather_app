@@ -45,6 +45,8 @@ export const getCachedWeather = async () => {
         nightTemperature: day.Temperature.Minimum.Value,
         dayPhrase: day.Day.IconPhrase,
         nightPhrase: day.Night.IconPhrase,
+        weatherIdDay: day.Day.Icon, // Добавляем weatherIdDay
+        weatherIdNight: day.Night.Icon, // Добавляем weatherIdNight
       }));
 
       await saveWeatherData(locationId, formatted);
