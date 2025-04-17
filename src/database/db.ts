@@ -1,7 +1,8 @@
 import SQLite from "react-native-sqlite-storage";
 
+// Відкриття бази даних
 const db = SQLite.openDatabase(
-  { name: 'weather.db', location: 'default' },
+  { name: "weather.db", location: "default" },
   () => console.log("📦 Database opened"),
   (error) => console.error("❌ Database error: ", error)
 );
@@ -14,7 +15,7 @@ export const createTables = () => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         location_id TEXT,
         fetchTime INTEGER,
-        epochDate INTEGER,  -- Нове поле для збереження Epoch дати
+        epochDate INTEGER,
         dayTemperature REAL,
         nightTemperature REAL,
         dayPhrase TEXT,
@@ -28,7 +29,7 @@ export const createTables = () => {
     tx.executeSql(
       `CREATE TABLE IF NOT EXISTS last_fetch_time (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        locationId TEXT,
+        locationId TEXT UNIQUE,
         lastFetchTime INTEGER
       )`,
       [],
@@ -38,30 +39,60 @@ export const createTables = () => {
   });
 };
 
-// Збереження даних про погоду для 5 днів
-export const saveWeatherData = (locationId: string, forecasts: any[]) => {
-  const fetchTime = Date.now();
+// Збереження даних про погоду
+export const saveWeatherData = async (locationId: string, weatherItems: any[]) => {
+  return new Promise<void>((resolve, reject) => {
+    const fetchTime = Date.now();
 
-  db.transaction((tx) => {
-    forecasts.forEach((forecast) => {
-      const dayTemp = forecast.Temperature.Maximum.Value;
-      const nightTemp = forecast.Temperature.Minimum.Value;
-      const dayPhrase = forecast.Day.IconPhrase;
-      const nightPhrase = forecast.Night.IconPhrase;
-      const epochDate = forecast.EpochDate; // Отримуємо EpochDate із прогнозу
+    db.transaction(
+      (tx) => {
+        // Видалення старих записів
+        tx.executeSql(
+          `DELETE FROM weather WHERE location_id = ?`,
+          [locationId],
+          () => console.log(`🗑 Старі записи видалено для location_id = ${locationId}`),
+          (_, error) => {
+            console.error("❌ Помилка при видаленні старих записів:", error);
+            return false;
+          }
+        );
 
-      tx.executeSql(
-        `INSERT INTO weather (location_id, fetchTime, epochDate, dayTemperature, nightTemperature, dayPhrase, nightPhrase)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [locationId, fetchTime, epochDate, dayTemp, nightTemp, dayPhrase, nightPhrase],
-        () => console.log(`✅ Saved forecast for ${locationId}: ${dayTemp}° / ${nightTemp}°`),
-        (error) => console.error("❌ Error saving weather data:", error)
-      );
-    });
+        // Додавання нових
+        for (const item of weatherItems) {
+          tx.executeSql(
+            `INSERT INTO weather (location_id, fetchTime, epochDate, dayTemperature, nightTemperature, dayPhrase, nightPhrase)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [
+              locationId,
+              fetchTime,
+              item.epochDate,
+              item.dayTemperature,
+              item.nightTemperature,
+              item.dayPhrase,
+              item.nightPhrase,
+            ],
+            () => console.log("✅ Додано прогноз:", item),
+            (_, error) => {
+              console.error("❌ Помилка при додаванні прогнозу:", error);
+              return false;
+            }
+          );
+        }
+      },
+      (error) => {
+        console.error("❌ Помилка транзакції збереження:", error);
+        reject(error);
+      },
+      () => {
+        console.log("✅ Усі прогнози збережені.");
+        logWeatherTable(); // Показати вміст таблиці після збереження
+        resolve();
+      }
+    );
   });
 };
 
-// Завантаження погоди з бази
+// Завантаження погоди з БД
 export const loadWeatherData = (locationId: string) => {
   return new Promise<any[]>((resolve, reject) => {
     db.transaction((tx) => {
@@ -70,10 +101,11 @@ export const loadWeatherData = (locationId: string) => {
         [locationId],
         (_, results) => {
           const rows = results.rows.raw();
+          console.log("📤 Дані з SQLite:", rows);
           resolve(rows);
         },
         (error) => {
-          console.error("❌ Error loading weather data:", error);
+          console.error("❌ Помилка при завантаженні погоди:", error);
           reject(error);
         }
       );
@@ -93,7 +125,7 @@ export const checkLastFetchTime = (locationId: string) => {
           resolve(rows.length > 0 ? rows[0].lastFetchTime : 0);
         },
         (error) => {
-          console.error("❌ Error checking last fetch time:", error);
+          console.error("❌ Помилка перевірки часу останнього запиту:", error);
           reject(error);
         }
       );
@@ -112,8 +144,45 @@ export const updateLastFetchTime = (locationId: string) => {
          ?, ?
        )`,
       [locationId, locationId, time],
-      () => console.log("🔄 Last fetch time updated!"),
-      (error) => console.error("❌ Error updating last fetch time:", error)
+      () => {
+        console.log("🔄 Last fetch time updated!");
+        logLastFetchTable(); // Показати вміст таблиці
+      },
+      (error) => console.error("❌ Помилка оновлення часу останнього запиту:", error)
+    );
+  });
+};
+
+// 📋 Вивід вмісту таблиці weather
+const logWeatherTable = () => {
+  db.transaction((tx) => {
+    tx.executeSql(
+      `SELECT * FROM weather`,
+      [],
+      (_, results) => {
+        const rows = results.rows.raw();
+        console.log("📋 Содержимое таблицы weather:", rows);
+      },
+      (error) => {
+        console.error("❌ Ошибка при логировании таблицы weather:", error);
+      }
+    );
+  });
+};
+
+// 📋 Вивід вмісту таблиці last_fetch_time
+const logLastFetchTable = () => {
+  db.transaction((tx) => {
+    tx.executeSql(
+      `SELECT * FROM last_fetch_time`,
+      [],
+      (_, results) => {
+        const rows = results.rows.raw();
+        console.log("📋 Содержимое таблицы last_fetch_time:", rows);
+      },
+      (error) => {
+        console.error("❌ Ошибка при логировании таблицы last_fetch_time:", error);
+      }
     );
   });
 };
