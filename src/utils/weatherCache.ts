@@ -4,14 +4,17 @@ import { weatherApi } from "../services/api/weatherApi";
 import {
   checkLastFetchTime,
   saveWeatherData,
+  saveHourlyWeatherData,
   loadWeatherData,
+  loadHourlyWeatherData,
   updateLastFetchTime,
-  createTables
+  createTables,
 } from "../database/db";
+import { HourlyForecast } from "../services/api/types";
 
 const TWELVE_HOURS = 12 * 60 * 60 * 1000;
 
-// Получение прогноза с проверкой на кэш
+
 export const getCachedWeather = async () => {
   const locationId = await AsyncStorage.getItem("locationId");
 
@@ -30,34 +33,57 @@ export const getCachedWeather = async () => {
   console.log("🕒 lastFetch:", lastFetch, "| Текущее время:", now, "| Прошло времени:", now - lastFetch);
 
   const fetchAndFormat = async () => {
-    const result = await store.dispatch(
+    const dailyResult = await store.dispatch(
       weatherApi.endpoints.getFiveDayForecast.initiate(locationId)
     );
 
-    console.log("📡 Результат запроса к API:", result);
+    const hourlyResult = await store.dispatch(
+      weatherApi.endpoints.getTwelveHourForecast.initiate(locationId)
+    );
 
-    if (result && "data" in result && result.data) {
-      const dailyForecasts = result.data.DailyForecasts;
+    if (
+      dailyResult && "data" in dailyResult && dailyResult.data &&
+      hourlyResult && "data" in hourlyResult && hourlyResult.data
+    ) {
+      const dailyForecasts = dailyResult.data.DailyForecasts;
+      const hourlyForecasts = hourlyResult.data;
 
-      const formatted = dailyForecasts.map((day: any) => ({
+      const formattedDaily = dailyForecasts.map((day: any) => ({
         epochDate: Math.floor(new Date(day.Date).getTime() / 1000),
         dayTemperature: day.Temperature.Maximum.Value,
         nightTemperature: day.Temperature.Minimum.Value,
         dayPhrase: day.Day.IconPhrase,
         nightPhrase: day.Night.IconPhrase,
-        weatherIdDay: day.Day.Icon, // Добавляем weatherIdDay
-        weatherIdNight: day.Night.Icon, // Добавляем weatherIdNight
+        weatherIdDay: day.Day.Icon,
+        weatherIdNight: day.Night.Icon,
+        HasPrecipitationDay: day.Day.HasPrecipitation ? 1 : 0,
+        HasPrecipitationNight: day.Night.HasPrecipitation ? 1 : 0,
       }));
 
-      await saveWeatherData(locationId, formatted);
+      const formattedHourly: HourlyForecast[] = hourlyForecasts.map((hour: any) => ({
+        DateTime: hour.DateTime,
+        EpochDateTime: Math.floor(new Date(hour.DateTime).getTime() / 1000),
+        WeatherIcon: hour.WeatherIcon,
+        IconPhrase: hour.IconPhrase,
+        HasPrecipitation: hour.HasPrecipitation ? 1 : 0,
+        IsDaylight: hour.IsDaylight ? 1 : 0,
+        Temperature: {
+          Value: hour.Temperature.Value,
+        },
+        PrecipitationProbability: hour.PrecipitationProbability,
+      }));
+
+      await saveWeatherData(locationId, formattedDaily);
+      await saveHourlyWeatherData(locationId, formattedHourly);
       await updateLastFetchTime(locationId);
 
-      console.log("📦 Сформатированный прогноз:", formatted);
+      console.log("📦 Сформатированный прогноз (5 дней):", formattedDaily);
+      console.log("📦 Сформатированный прогноз (12 часов):", formattedHourly);
       console.log("📤 Источник данных: API → SQLite");
 
-      return formatted;
+      return { daily: formattedDaily, hourly: formattedHourly };
     } else {
-      console.error("❌ Ошибка получения данных с API:", result?.error ?? "Неизвестная ошибка");
+      console.error("❌ Ошибка получения данных с API:", dailyResult?.error || hourlyResult?.error || "Неизвестная ошибка");
       return null;
     }
   };
@@ -68,14 +94,17 @@ export const getCachedWeather = async () => {
   } else {
     console.log("💾 Загружаем данные из SQLite (кэш)...");
 
-    const localData = await loadWeatherData(locationId);
+    const localDaily = await loadWeatherData(locationId);
+    const localHourly = await loadHourlyWeatherData(locationId);
 
-    if (localData && localData.length > 0) {
-      console.log("📦 Загруженные данные из SQLite:", localData);
+    if ((localDaily?.length ?? 0) > 0 && (localHourly?.length ?? 0) > 0) {
+      console.log("📦 Загруженные данные из SQLite (daily):", localDaily);
+      console.log("📦 Загруженные данные из SQLite (hourly):", localHourly);
       console.log("📤 Источник данных: SQLite (из кэша)");
-      return localData;
+
+      return { daily: localDaily, hourly: localHourly };
     } else {
-      console.log("⚠️ Нет данных в БД — делаем запрос к API...");
+      console.log("⚠️ Нет полных данных в БД — делаем запрос к API...");
       return await fetchAndFormat();
     }
   }
