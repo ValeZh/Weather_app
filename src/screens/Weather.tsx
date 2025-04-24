@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-  FlatList,
-  Dimensions,
-} from "react-native";
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, FlatList, Dimensions } from "react-native";
 import { getCachedWeather } from "../utils/weatherCache";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LineChart } from "react-native-chart-kit";
@@ -31,37 +23,38 @@ const Weather = () => {
   const [hourlyWeather, setHourlyWeather] = useState<HourlyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [locationId, setLocationId] = useState<string | null>(null);
-  const [currentTemp, setCurrentTemp] = useState<string>("NaN°C");
 
   useEffect(() => {
     const loadWeather = async () => {
+      setLoading(true);
+      console.log("⏳ Загрузка погоды начата");
+
       try {
         const savedId = await AsyncStorage.getItem("locationId");
+        console.log("📍 Загружен locationId из памяти:", savedId);
         setLocationId(savedId);
-        if (!savedId) return;
 
-        const result = await getCachedWeather();
+        if (!savedId) {
+          console.warn("⚠️ Location ID отсутствует. Погода не будет загружена.");
+          return;
+        }
+
+        // Сначала загрузка в БД (внутри getCachedWeather)
+        const result = await getCachedWeather(); // <- сначала качает API, потом кладёт в БД, потом возвращает
+        console.log("📦 Полученные данные из кеша или БД:", result);
 
         if (result?.daily && Array.isArray(result.daily)) {
           const formatted = result.daily.map((item) => {
-            const {
-              dayTemperature,
-              nightTemperature,
-              dayPhrase,
-              nightPhrase,
-              epochDate,
-            } = item;
-
-            const date = new Date(epochDate * 1000).toLocaleDateString();
-            const dayC = `${Math.round((dayTemperature - 32) * 5 / 9)}°C`;
-            const nightC = `${Math.round((nightTemperature - 32) * 5 / 9)}°C`;
+            const date = new Date(item.epochDate * 1000).toLocaleDateString();
+            const dayC = `${Math.round((item.dayTemperature - 32) * 5 / 9)}°C`;
+            const nightC = `${Math.round((item.nightTemperature - 32) * 5 / 9)}°C`;
 
             return {
               dateTime: date,
               dayTemperature: dayC,
-              dayPhase: dayPhrase ?? "Неизвестно",
+              dayPhase: item.dayPhrase ?? "Неизвестно",
               nightTemperature: nightC,
-              nightPhase: nightPhrase ?? "Неизвестно",
+              nightPhase: item.nightPhrase ?? "Неизвестно",
             };
           });
 
@@ -70,43 +63,49 @@ const Weather = () => {
 
         if (result?.hourly && Array.isArray(result.hourly)) {
           const hourlyFormatted = result.hourly.map((item) => {
-            const date = new Date(item.epochDateTime * 1000);
+            const date = new Date(item.EpochDateTime * 1000);
             const hourStr = `${date.getHours()}:00`;
-            const tempF = item.temperatureValue ?? item.temperature;
+            const tempF = item.Temperature?.Value ?? item.temperature;
             const tempC = `${Math.round((tempF - 32) * 5 / 9)}°C`;
 
             return {
               dateTime: hourStr,
               temperature: tempC,
-              phrase: item.iconPhrase ?? "Нет данных",
+              phrase: item.IconPhrase ?? "Нет данных",
             };
           });
 
           setHourlyWeather(hourlyFormatted);
-          if (hourlyFormatted[0]?.temperature) {
-            setCurrentTemp(hourlyFormatted[0].temperature);
-          }
         }
-      } catch (error) {
-        console.error("Ошибка загрузки:", error);
+
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          console.error("❌ Ошибка загрузки погоды:", error.stack);
+        } else {
+          console.error("❌ Ошибка загрузки погоды:", error);
+        }
       } finally {
         setLoading(false);
+        console.log("✅ Загрузка завершена");
       }
     };
 
     loadWeather();
   }, []);
 
-  const parsedTemps = hourlyWeather.map((item) =>
-    parseInt(item.temperature.replace("°C", ""))
-  );
-  const isValidChart = parsedTemps.every((t) => !isNaN(t));
-
   if (loading) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" />
-        <Text>Загрузка погоды...</Text>
+        <Text>Загрузка...</Text>
+      </View>
+    );
+  }
+
+  if (!locationId) {
+    return (
+      <View style={styles.container}>
+        <Text>❌ Location ID не найден. Пожалуйста, выберите местоположение.</Text>
       </View>
     );
   }
@@ -114,7 +113,7 @@ const Weather = () => {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.currentTemp}>
-        🌡 Сейчас: <Text style={{ color: "#1976d2" }}>{currentTemp}</Text>
+        🌡 Сейчас: {hourlyWeather[0]?.temperature ?? "—"} ({hourlyWeather[0]?.phrase ?? "—"})
       </Text>
 
       <Text style={styles.sectionTitle}>⏰ Прогноз на 12 часов</Text>
@@ -132,13 +131,19 @@ const Weather = () => {
         )}
       />
 
-      {isValidChart && (
+      {hourlyWeather.length > 0 && (
         <>
           <Text style={styles.sectionTitle}>📈 Температура по часам</Text>
           <LineChart
             data={{
               labels: hourlyWeather.map((item) => item.dateTime),
-              datasets: [{ data: parsedTemps }],
+              datasets: [
+                {
+                  data: hourlyWeather.map((item) =>
+                    parseInt(item.temperature.replace("°C", "")) || 0
+                  ),
+                },
+              ],
             }}
             width={Dimensions.get("window").width - 40}
             height={220}
@@ -150,7 +155,9 @@ const Weather = () => {
               decimalPlaces: 0,
               color: (opacity = 1) => `rgba(0, 123, 255, ${opacity})`,
               labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-              style: { borderRadius: 16 },
+              style: {
+                borderRadius: 16,
+              },
               propsForDots: {
                 r: "4",
                 strokeWidth: "2",
@@ -166,16 +173,12 @@ const Weather = () => {
         </>
       )}
 
-      <Text style={styles.sectionTitle}>📅 Прогноз на 5 дней</Text>
+      <Text style={styles.sectionTitle}>🌤 Прогноз на 5 дней</Text>
       {weather.map((item, index) => (
         <View key={index} style={styles.card}>
           <Text style={styles.date}>{item.dateTime}</Text>
-          <Text style={styles.temp}>
-            🌞 День: {item.dayTemperature} — {item.dayPhase}
-          </Text>
-          <Text style={styles.temp}>
-            🌙 Ночь: {item.nightTemperature} — {item.nightPhase}
-          </Text>
+          <Text style={styles.temp}>День: {item.dayTemperature} — {item.dayPhase}</Text>
+          <Text style={styles.temp}>Ночь: {item.nightTemperature} — {item.nightPhase}</Text>
         </View>
       ))}
     </ScrollView>
@@ -187,7 +190,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: "center",
     padding: 20,
-    backgroundColor: "#e0f7fa",
+    backgroundColor: "#f2f2f2",
   },
   sectionTitle: {
     fontSize: 18,
@@ -196,9 +199,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   currentTemp: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "bold",
-    marginVertical: 10,
+    marginBottom: 10,
   },
   card: {
     marginBottom: 10,

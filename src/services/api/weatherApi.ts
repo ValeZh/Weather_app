@@ -5,7 +5,7 @@ import {
   HourlyWeatherResponse
 } from "./types";
 
-const API_KEY = "6XpRpAFnCiKespheTuuJnev2ovVsP1GV";
+const API_KEY = "Fn4AeO2lxPDRsdpHrPTUAhse4HcHD3wU";
 
 export const weatherApi = createApi({
   reducerPath: "weatherApi",

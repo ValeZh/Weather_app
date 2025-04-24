@@ -14,29 +14,22 @@ import { HourlyForecast } from "../services/api/types";
 
 const TWELVE_HOURS = 12 * 60 * 60 * 1000;
 
-
 export const getCachedWeather = async () => {
   const locationId = await AsyncStorage.getItem("locationId");
 
   if (!locationId) {
     console.error("❌ Ошибка: locationId не найден в AsyncStorage.");
-    return null;
+    return { daily: [], hourly: [] };
   }
 
-  console.log("📍 locationId:", locationId);
-
   await createTables();
-
   const lastFetch = await checkLastFetchTime(locationId);
   const now = Date.now();
-
-  console.log("🕒 lastFetch:", lastFetch, "| Текущее время:", now, "| Прошло времени:", now - lastFetch);
 
   const fetchAndFormat = async () => {
     const dailyResult = await store.dispatch(
       weatherApi.endpoints.getFiveDayForecast.initiate(locationId)
     );
-
     const hourlyResult = await store.dispatch(
       weatherApi.endpoints.getTwelveHourForecast.initiate(locationId)
     );
@@ -56,11 +49,11 @@ export const getCachedWeather = async () => {
         nightPhrase: day.Night.IconPhrase,
         weatherIdDay: day.Day.Icon,
         weatherIdNight: day.Night.Icon,
-        HasPrecipitationDay: day.Day.HasPrecipitation ? 1 : 0,
-        HasPrecipitationNight: day.Night.HasPrecipitation ? 1 : 0,
+        hasPrecipitationDay: day.Day.HasPrecipitation ? 1 : 0,
+        hasPrecipitationNight: day.Night.HasPrecipitation ? 1 : 0,
       }));
 
-      const formattedHourly: HourlyForecast[] = hourlyForecasts.map((hour: any) => ({
+      const formattedHourly = hourlyForecasts.map((hour: any) => ({
         DateTime: hour.DateTime,
         EpochDateTime: Math.floor(new Date(hour.DateTime).getTime() / 1000),
         WeatherIcon: hour.WeatherIcon,
@@ -77,34 +70,22 @@ export const getCachedWeather = async () => {
       await saveHourlyWeatherData(locationId, formattedHourly);
       await updateLastFetchTime(locationId);
 
-      console.log("📦 Сформатированный прогноз (5 дней):", formattedDaily);
-      console.log("📦 Сформатированный прогноз (12 часов):", formattedHourly);
-      console.log("📤 Источник данных: API → SQLite");
-
       return { daily: formattedDaily, hourly: formattedHourly };
     } else {
-      console.error("❌ Ошибка получения данных с API:", dailyResult?.error || hourlyResult?.error || "Неизвестная ошибка");
-      return null;
+      console.error("❌ Ошибка получения данных с API");
+      return { daily: [], hourly: [] };
     }
   };
 
   if (!lastFetch || now - lastFetch >= TWELVE_HOURS) {
-    console.log("🌐 Кэш устарел или отсутствует — отправляем запрос к API...");
     return await fetchAndFormat();
   } else {
-    console.log("💾 Загружаем данные из SQLite (кэш)...");
-
     const localDaily = await loadWeatherData(locationId);
     const localHourly = await loadHourlyWeatherData(locationId);
 
     if ((localDaily?.length ?? 0) > 0 && (localHourly?.length ?? 0) > 0) {
-      console.log("📦 Загруженные данные из SQLite (daily):", localDaily);
-      console.log("📦 Загруженные данные из SQLite (hourly):", localHourly);
-      console.log("📤 Источник данных: SQLite (из кэша)");
-
       return { daily: localDaily, hourly: localHourly };
     } else {
-      console.log("⚠️ Нет полных данных в БД — делаем запрос к API...");
       return await fetchAndFormat();
     }
   }
