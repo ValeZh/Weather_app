@@ -10,7 +10,6 @@ const db = SQLite.openDatabase(
 // Создание таблиц
 export const createTables = () => {
   db.transaction((tx) => {
-    // Таблица для прогноза погоды
     tx.executeSql(
       `CREATE TABLE IF NOT EXISTS weather (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -31,7 +30,6 @@ export const createTables = () => {
       (error) => console.error("❌ Error creating weather table:", error)
     );
 
-    // Таблица для времени последнего запроса
     tx.executeSql(
       `CREATE TABLE IF NOT EXISTS last_fetch_time (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,7 +41,6 @@ export const createTables = () => {
       (error) => console.error("❌ Error creating last fetch time table:", error)
     );
 
-    // Обновленная структура таблицы для 12-часового прогноза
     tx.executeSql(
       `CREATE TABLE IF NOT EXISTS weather_12_hours (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,14 +62,12 @@ export const createTables = () => {
   });
 };
 
-// Сохранение данных о погоде
 export const saveWeatherData = async (locationId: string, weatherItems: any[]) => {
   return new Promise<void>((resolve, reject) => {
     const fetchTime = Date.now();
 
     db.transaction(
       (tx) => {
-        // Удаление старых записей
         tx.executeSql(
           `DELETE FROM weather WHERE location_id = ?`,
           [locationId],
@@ -83,7 +78,6 @@ export const saveWeatherData = async (locationId: string, weatherItems: any[]) =
           }
         );
 
-        // Добавление новых данных
         for (const item of weatherItems) {
           tx.executeSql(
             `INSERT INTO weather (
@@ -127,14 +121,12 @@ export const saveWeatherData = async (locationId: string, weatherItems: any[]) =
   });
 };
 
-// Сохранение данных о 12-часовом прогнозе
 export const saveHourlyWeatherData = async (locationId: string, hourlyData: HourlyForecast[]) => {
   return new Promise<void>((resolve, reject) => {
     const fetchTime = Date.now();
 
     db.transaction(
       (tx) => {
-        // Удаление старых записей
         tx.executeSql(
           `DELETE FROM weather_12_hours WHERE location_id = ?`,
           [locationId],
@@ -145,7 +137,6 @@ export const saveHourlyWeatherData = async (locationId: string, hourlyData: Hour
           }
         );
 
-        // Добавление новых данных
         for (const item of hourlyData) {
           tx.executeSql(
             `INSERT INTO weather_12_hours (
@@ -159,8 +150,8 @@ export const saveHourlyWeatherData = async (locationId: string, hourlyData: Hour
               item.EpochDateTime,
               item.WeatherIcon,
               item.IconPhrase,
-              item.HasPrecipitation ? 1 : 0, // Преобразуем boolean в 1 или 0
-              item.IsDaylight ? 1 : 0, // Преобразуем boolean в 1 или 0
+              item.HasPrecipitation ? 1 : 0,
+              item.IsDaylight ? 1 : 0,
               item.Temperature.Value,
               item.PrecipitationProbability
             ],
@@ -185,7 +176,6 @@ export const saveHourlyWeatherData = async (locationId: string, hourlyData: Hour
   });
 };
 
-// Загрузка данных о погоде
 export const loadWeatherData = (locationId: string) => {
   return new Promise<any[]>((resolve, reject) => {
     db.transaction((tx) => {
@@ -206,7 +196,6 @@ export const loadWeatherData = (locationId: string) => {
   });
 };
 
-// Загрузка данных о 12-часовом прогнозе
 export const loadHourlyWeatherData = (locationId: string) => {
   return new Promise<any[]>((resolve, reject) => {
     db.transaction((tx) => {
@@ -227,7 +216,6 @@ export const loadHourlyWeatherData = (locationId: string) => {
   });
 };
 
-// Проверка времени последнего запроса
 export const checkLastFetchTime = (locationId: string) => {
   return new Promise<number>((resolve, reject) => {
     db.transaction((tx) => {
@@ -247,7 +235,6 @@ export const checkLastFetchTime = (locationId: string) => {
   });
 };
 
-// Обновление времени последнего запроса
 export const updateLastFetchTime = (locationId: string) => {
   const time = Date.now();
   db.transaction((tx) => {
@@ -255,7 +242,7 @@ export const updateLastFetchTime = (locationId: string) => {
       `INSERT OR REPLACE INTO last_fetch_time (id, locationId, lastFetchTime)
        VALUES (
          (SELECT id FROM last_fetch_time WHERE locationId = ?),
-         ?, ? 
+         ?, ?
        )`,
       [locationId, locationId, time],
       () => {
@@ -267,7 +254,6 @@ export const updateLastFetchTime = (locationId: string) => {
   });
 };
 
-// Логирование таблицы weather
 const logWeatherTable = () => {
   db.transaction((tx) => {
     tx.executeSql(
@@ -284,7 +270,6 @@ const logWeatherTable = () => {
   });
 };
 
-// Логирование таблицы weather_12_hours
 const logWeather12HoursTable = () => {
   db.transaction((tx) => {
     tx.executeSql(
@@ -301,7 +286,6 @@ const logWeather12HoursTable = () => {
   });
 };
 
-// Логирование таблицы last_fetch_time
 const logLastFetchTable = () => {
   db.transaction((tx) => {
     tx.executeSql(

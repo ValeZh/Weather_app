@@ -31,23 +31,16 @@ const Weather = () => {
   const [hourlyWeather, setHourlyWeather] = useState<HourlyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [locationId, setLocationId] = useState<string | null>(null);
+  const [currentTemp, setCurrentTemp] = useState<string>("NaN°C");
 
   useEffect(() => {
     const loadWeather = async () => {
-      console.log("⏳ Загрузка погоды начата");
-
       try {
         const savedId = await AsyncStorage.getItem("locationId");
-        console.log("📍 Загружен locationId из памяти:", savedId);
         setLocationId(savedId);
-
-        if (!savedId) {
-          console.warn("⚠️ Location ID отсутствует. Погода не будет загружена.");
-          return;
-        }
+        if (!savedId) return;
 
         const result = await getCachedWeather();
-        console.log("📦 Полученные данные из кеша или БД:", result);
 
         if (result?.daily && Array.isArray(result.daily)) {
           const formatted = result.daily.map((item) => {
@@ -90,22 +83,24 @@ const Weather = () => {
           });
 
           setHourlyWeather(hourlyFormatted);
+          if (hourlyFormatted[0]?.temperature) {
+            setCurrentTemp(hourlyFormatted[0].temperature);
+          }
         }
-
-      } catch (error: unknown) {
-        if (error instanceof Error) {
-          console.error("❌ Ошибка загрузки погоды:", error.stack);
-        } else {
-          console.error("❌ Ошибка загрузки погоды:", error);
-        }
+      } catch (error) {
+        console.error("Ошибка загрузки:", error);
       } finally {
         setLoading(false);
-        console.log("✅ Загрузка завершена");
       }
     };
 
     loadWeather();
   }, []);
+
+  const parsedTemps = hourlyWeather.map((item) =>
+    parseInt(item.temperature.replace("°C", ""))
+  );
+  const isValidChart = parsedTemps.every((t) => !isNaN(t));
 
   if (loading) {
     return (
@@ -116,24 +111,11 @@ const Weather = () => {
     );
   }
 
-  if (!locationId) {
-    return (
-      <View style={styles.container}>
-        <Text>❌ Location ID не найден. Пожалуйста, выберите местоположение.</Text>
-      </View>
-    );
-  }
-
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.sectionTitle}>🌤 Прогноз на 5 дней</Text>
-      {weather.map((item, index) => (
-        <View key={index} style={styles.card}>
-          <Text style={styles.date}>{item.dateTime}</Text>
-          <Text style={styles.temp}>День: {item.dayTemperature} — {item.dayPhase}</Text>
-          <Text style={styles.temp}>Ночь: {item.nightTemperature} — {item.nightPhase}</Text>
-        </View>
-      ))}
+      <Text style={styles.currentTemp}>
+        🌡 Сейчас: <Text style={{ color: "#1976d2" }}>{currentTemp}</Text>
+      </Text>
 
       <Text style={styles.sectionTitle}>⏰ Прогноз на 12 часов</Text>
       <FlatList
@@ -150,19 +132,13 @@ const Weather = () => {
         )}
       />
 
-      {hourlyWeather.length > 0 && (
+      {isValidChart && (
         <>
           <Text style={styles.sectionTitle}>📈 Температура по часам</Text>
           <LineChart
             data={{
               labels: hourlyWeather.map((item) => item.dateTime),
-              datasets: [
-                {
-                  data: hourlyWeather.map((item) =>
-                    parseInt(item.temperature.replace("°C", ""))
-                  ),
-                },
-              ],
+              datasets: [{ data: parsedTemps }],
             }}
             width={Dimensions.get("window").width - 40}
             height={220}
@@ -174,9 +150,7 @@ const Weather = () => {
               decimalPlaces: 0,
               color: (opacity = 1) => `rgba(0, 123, 255, ${opacity})`,
               labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-              style: {
-                borderRadius: 16,
-              },
+              style: { borderRadius: 16 },
               propsForDots: {
                 r: "4",
                 strokeWidth: "2",
@@ -191,6 +165,19 @@ const Weather = () => {
           />
         </>
       )}
+
+      <Text style={styles.sectionTitle}>📅 Прогноз на 5 дней</Text>
+      {weather.map((item, index) => (
+        <View key={index} style={styles.card}>
+          <Text style={styles.date}>{item.dateTime}</Text>
+          <Text style={styles.temp}>
+            🌞 День: {item.dayTemperature} — {item.dayPhase}
+          </Text>
+          <Text style={styles.temp}>
+            🌙 Ночь: {item.nightTemperature} — {item.nightPhase}
+          </Text>
+        </View>
+      ))}
     </ScrollView>
   );
 };
@@ -200,13 +187,18 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: "center",
     padding: 20,
-    backgroundColor: "#f2f2f2",
+    backgroundColor: "#e0f7fa",
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
     marginTop: 20,
     marginBottom: 10,
+  },
+  currentTemp: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginVertical: 10,
   },
   card: {
     marginBottom: 10,
