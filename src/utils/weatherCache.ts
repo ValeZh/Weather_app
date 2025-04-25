@@ -53,6 +53,9 @@ export const getCachedWeather = async () => {
         hasPrecipitationNight: day.Night.HasPrecipitation ? 1 : 0,
       }));
 
+      // Логируем необработанные данные о почасовом прогнозе
+      console.log("📦 Raw hourly forecast:", JSON.stringify(hourlyForecasts, null, 2));
+
       const formattedHourly = hourlyForecasts.map((hour: any) => ({
         DateTime: hour.DateTime,
         EpochDateTime: Math.floor(new Date(hour.DateTime).getTime() / 1000),
@@ -70,7 +73,9 @@ export const getCachedWeather = async () => {
       await saveHourlyWeatherData(locationId, formattedHourly);
       await updateLastFetchTime(locationId);
 
-      return { daily: formattedDaily, hourly: formattedHourly };
+      const result = { daily: formattedDaily, hourly: formattedHourly };
+      console.log("🌤️ Получено с API:", JSON.stringify(result, null, 2));
+      return result;
     } else {
       console.error("❌ Ошибка получения данных с API");
       return { daily: [], hourly: [] };
@@ -78,15 +83,21 @@ export const getCachedWeather = async () => {
   };
 
   if (!lastFetch || now - lastFetch >= TWELVE_HOURS) {
-    return await fetchAndFormat();
+    const fresh = await fetchAndFormat();
+    console.log("📡 Данные после обновления:", JSON.stringify(fresh, null, 2));
+    return fresh;
   } else {
     const localDaily = await loadWeatherData(locationId);
     const localHourly = await loadHourlyWeatherData(locationId);
+    const result = { daily: localDaily, hourly: localHourly };
 
     if ((localDaily?.length ?? 0) > 0 && (localHourly?.length ?? 0) > 0) {
-      return { daily: localDaily, hourly: localHourly };
+      console.log("💾 Загружено из БД:", JSON.stringify(result, null, 2));
+      return result;
     } else {
-      return await fetchAndFormat();
+      const fresh = await fetchAndFormat();
+      console.log("📡 Данные после фолбека:", JSON.stringify(fresh, null, 2));
+      return fresh;
     }
   }
 };

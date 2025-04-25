@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, FlatList, Dimensions } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  FlatList,
+  Dimensions,
+} from "react-native";
 import { getCachedWeather } from "../utils/weatherCache";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LineChart } from "react-native-chart-kit";
@@ -39,8 +47,7 @@ const Weather = () => {
           return;
         }
 
-        // Сначала загрузка в БД (внутри getCachedWeather)
-        const result = await getCachedWeather(); // <- сначала качает API, потом кладёт в БД, потом возвращает
+        const result = await getCachedWeather();
         console.log("📦 Полученные данные из кеша или БД:", result);
 
         if (result?.daily && Array.isArray(result.daily)) {
@@ -58,24 +65,29 @@ const Weather = () => {
             };
           });
 
+          console.log("✅ Отформатированные daily данные:", formatted);
           setWeather(formatted);
+        } else {
+          console.warn("⚠️ Пустой или неверный daily прогноз");
         }
 
         if (result?.hourly && Array.isArray(result.hourly)) {
           const hourlyFormatted = result.hourly.map((item) => {
-            const date = new Date(item.EpochDateTime * 1000);
+            const date = new Date(item.epochDateTime * 1000);
             const hourStr = `${date.getHours()}:00`;
-            const tempF = item.Temperature?.Value ?? item.temperature;
+            const tempF = item.temperatureValue;
             const tempC = `${Math.round((tempF - 32) * 5 / 9)}°C`;
-
             return {
               dateTime: hourStr,
               temperature: tempC,
-              phrase: item.IconPhrase ?? "Нет данных",
+              phrase: item.iconPhrase,
             };
           });
 
+          console.log("✅ Отформатированные hourly данные:", hourlyFormatted);
           setHourlyWeather(hourlyFormatted);
+        } else {
+          console.warn("⚠️ Пустой или неверный hourly прогноз");
         }
 
       } catch (error: unknown) {
@@ -93,7 +105,13 @@ const Weather = () => {
     loadWeather();
   }, []);
 
+  console.log("🎯 Состояние перед отрисовкой:");
+  console.log("📌 locationId:", locationId);
+  console.log("📆 weather:", weather);
+  console.log("⏱ hourlyWeather:", hourlyWeather);
+
   if (loading) {
+    console.log("⌛ Компонент: отображается индикатор загрузки");
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" />
@@ -103,6 +121,7 @@ const Weather = () => {
   }
 
   if (!locationId) {
+    console.log("🚫 Компонент: locationId отсутствует — показ сообщения об ошибке");
     return (
       <View style={styles.container}>
         <Text>❌ Location ID не найден. Пожалуйста, выберите местоположение.</Text>
