@@ -26,7 +26,7 @@ export const getCachedWeather = async () => {
   const lastFetch = await checkLastFetchTime(locationId);
   const now = Date.now();
 
-  const fetchAndFormat = async () => {
+  const fetchAndStoreToDb = async () => {
     const dailyResult = await store.dispatch(
       weatherApi.endpoints.getFiveDayForecast.initiate(locationId)
     );
@@ -53,9 +53,6 @@ export const getCachedWeather = async () => {
         hasPrecipitationNight: day.Night.HasPrecipitation ? 1 : 0,
       }));
 
-      // Логируем необработанные данные о почасовом прогнозе
-      console.log("📦 Raw hourly forecast:", JSON.stringify(hourlyForecasts, null, 2));
-
       const formattedHourly = hourlyForecasts.map((hour: any) => ({
         DateTime: hour.DateTime,
         EpochDateTime: Math.floor(new Date(hour.DateTime).getTime() / 1000),
@@ -72,32 +69,24 @@ export const getCachedWeather = async () => {
       await saveWeatherData(locationId, formattedDaily);
       await saveHourlyWeatherData(locationId, formattedHourly);
       await updateLastFetchTime(locationId);
-
-      const result = { daily: formattedDaily, hourly: formattedHourly };
-      console.log("🌤️ Получено с API:", JSON.stringify(result, null, 2));
-      return result;
     } else {
       console.error("❌ Ошибка получения данных с API");
-      return { daily: [], hourly: [] };
     }
   };
 
   if (!lastFetch || now - lastFetch >= TWELVE_HOURS) {
-    const fresh = await fetchAndFormat();
-    console.log("📡 Данные после обновления:", JSON.stringify(fresh, null, 2));
-    return fresh;
-  } else {
-    const localDaily = await loadWeatherData(locationId);
-    const localHourly = await loadHourlyWeatherData(locationId);
-    const result = { daily: localDaily, hourly: localHourly };
+    await fetchAndStoreToDb();
+  }
 
-    if ((localDaily?.length ?? 0) > 0 && (localHourly?.length ?? 0) > 0) {
-      console.log("💾 Загружено из БД:", JSON.stringify(result, null, 2));
-      return result;
-    } else {
-      const fresh = await fetchAndFormat();
-      console.log("📡 Данные после фолбека:", JSON.stringify(fresh, null, 2));
-      return fresh;
-    }
+  const localDaily = await loadWeatherData(locationId);
+  const localHourly = await loadHourlyWeatherData(locationId);
+  const result = { daily: localDaily, hourly: localHourly };
+
+  if ((localDaily?.length ?? 0) > 0 && (localHourly?.length ?? 0) > 0) {
+    console.log("💾 Возвращено из БД:", JSON.stringify(result, null, 2));
+    return result;
+  } else {
+    console.warn("⚠️ Данные в БД не найдены даже после запроса.");
+    return { daily: [], hourly: [] };
   }
 };
