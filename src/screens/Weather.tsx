@@ -12,7 +12,7 @@ import {
 import { getCachedWeather } from "../utils/weatherCache";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LineChart } from "react-native-chart-kit";
-import weatherIcons from "../assets/weatherIcons";
+import weatherIcons from "../assets/weatherIcons"; // 👈 импорт локальных иконок
 
 type WeatherItem = {
   dateTime: string;
@@ -67,8 +67,8 @@ const Weather = () => {
               dayPhase: item.dayPhrase ?? "Неизвестно",
               nightTemperature: nightC,
               nightPhase: item.nightPhrase ?? "Неизвестно",
-              weatherIconDay: item.weatherIdDay,   // сохраняем иконки дня
-              weatherIconNight: item.weatherIdNight, // и ночи
+              weatherIconDay: item.weatherIdDay,
+              weatherIconNight: item.weatherIdNight,
             };
           });
 
@@ -136,25 +136,25 @@ const Weather = () => {
     );
   }
 
-  const getIconUri = (iconNumber: number) => {
+  const getIconSource = (iconNumber: number) => {
     const formattedNumber = iconNumber < 10 ? `0${iconNumber}` : `${iconNumber}`;
-    return `https://developer.accuweather.com/sites/default/files/${formattedNumber}-s.png`;
+    return weatherIcons[formattedNumber] || weatherIcons["01"]; // если нет картинки, использовать "01"
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-<View style={styles.currentWeatherContainer}>
-  <Image
-    source={{ uri: getIconUri(hourlyWeather[0]?.weatherIcon ?? 1) }}
-    style={styles.currentWeatherIcon}
-  />
-  <Text style={styles.currentTemp}>
-    {hourlyWeather[0]?.temperature ?? "—"}
-  </Text>
-  <Text style={styles.currentPhrase}>
-    {hourlyWeather[0]?.phrase ?? "—"}
-  </Text>
-</View>
+      <View style={styles.currentWeatherContainer}>
+        <Image
+          source={getIconSource(hourlyWeather[0]?.weatherIcon ?? 1)}
+          style={styles.currentWeatherIcon}
+        />
+        <Text style={styles.currentTemp}>
+          {hourlyWeather[0]?.temperature ?? "—"}
+        </Text>
+        <Text style={styles.currentPhrase}>
+          {hourlyWeather[0]?.phrase ?? "—"}
+        </Text>
+      </View>
 
       <Text style={styles.sectionTitle}>⏰ Прогноз на 12 часов</Text>
       <FlatList
@@ -166,7 +166,7 @@ const Weather = () => {
           <View style={styles.hourCard}>
             <Text style={styles.hourText}>{item.dateTime}</Text>
             <Image
-              source={{ uri: getIconUri(item.weatherIcon) }}
+              source={getIconSource(item.weatherIcon)}
               style={styles.weatherIconSmall}
             />
             <Text style={styles.hourTemp}>{item.temperature}</Text>
@@ -190,8 +190,9 @@ const Weather = () => {
               ],
             }}
             width={Dimensions.get("window").width - 40}
-            height={220}
+            height={290}
             yAxisSuffix="°C"
+            verticalLabelRotation={60}
             chartConfig={{
               backgroundColor: "#e3f2fd",
               backgroundGradientFrom: "#e3f2fd",
@@ -224,7 +225,7 @@ const Weather = () => {
           <View style={styles.dayNightRow}>
             <View style={styles.dayNightBlock}>
               <Image
-                source={{ uri: getIconUri(item.weatherIconDay) }}
+                source={getIconSource(item.weatherIconDay)}
                 style={styles.weatherIconSmall}
               />
               <Text style={styles.temp}>День: {item.dayTemperature}</Text>
@@ -232,7 +233,7 @@ const Weather = () => {
             </View>
             <View style={styles.dayNightBlock}>
               <Image
-                source={{ uri: getIconUri(item.weatherIconNight) }}
+                source={getIconSource(item.weatherIconNight)}
                 style={styles.weatherIconSmall}
               />
               <Text style={styles.temp}>Ночь: {item.nightTemperature}</Text>
@@ -245,6 +246,7 @@ const Weather = () => {
   );
 };
 
+// 🔥 styles остаются без изменений
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
@@ -317,7 +319,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
   },
-
   currentWeatherContainer: {
     alignItems: "center",
     marginBottom: 20,
@@ -336,7 +337,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontStyle: "italic",
   },
-  
 });
 
 export default Weather;
