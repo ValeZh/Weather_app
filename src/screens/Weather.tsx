@@ -7,10 +7,12 @@ import {
   ActivityIndicator,
   FlatList,
   Dimensions,
+  Image,
 } from "react-native";
 import { getCachedWeather } from "../utils/weatherCache";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LineChart } from "react-native-chart-kit";
+import weatherIcons from "../assets/weatherIcons";
 
 type WeatherItem = {
   dateTime: string;
@@ -18,12 +20,15 @@ type WeatherItem = {
   dayPhase: string;
   nightTemperature: string;
   nightPhase: string;
+  weatherIconDay: number;
+  weatherIconNight: number;
 };
 
 type HourlyItem = {
   dateTime: string;
   temperature: string;
   phrase: string;
+  weatherIcon: number;
 };
 
 const Weather = () => {
@@ -62,6 +67,8 @@ const Weather = () => {
               dayPhase: item.dayPhrase ?? "Неизвестно",
               nightTemperature: nightC,
               nightPhase: item.nightPhrase ?? "Неизвестно",
+              weatherIconDay: item.weatherIdDay,   // сохраняем иконки дня
+              weatherIconNight: item.weatherIdNight, // и ночи
             };
           });
 
@@ -72,18 +79,25 @@ const Weather = () => {
         }
 
         if (result?.hourly && Array.isArray(result.hourly)) {
+          const offsetMinutes = new Date().getTimezoneOffset();
+          const offsetHours = -offsetMinutes / 60;
+          
           const hourlyFormatted = result.hourly.map((item) => {
             const date = new Date(item.epochDateTime * 1000);
-            const hourStr = `${date.getHours()}:00`;
+            date.setHours(date.getHours() + offsetHours);
+          
+            const hour = date.getHours().toString().padStart(2, "0");
+            const hourStr = `${hour}:00`;
             const tempF = item.temperatureValue;
             const tempC = `${Math.round((tempF - 32) * 5 / 9)}°C`;
             return {
               dateTime: hourStr,
               temperature: tempC,
               phrase: item.iconPhrase,
+              weatherIcon: item.weatherIcon,
             };
           });
-
+        
           console.log("✅ Отформатированные hourly данные:", hourlyFormatted);
           setHourlyWeather(hourlyFormatted);
         } else {
@@ -105,13 +119,7 @@ const Weather = () => {
     loadWeather();
   }, []);
 
-  console.log("🎯 Состояние перед отрисовкой:");
-  console.log("📌 locationId:", locationId);
-  console.log("📆 weather:", weather);
-  console.log("⏱ hourlyWeather:", hourlyWeather);
-
   if (loading) {
-    console.log("⌛ Компонент: отображается индикатор загрузки");
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" />
@@ -121,7 +129,6 @@ const Weather = () => {
   }
 
   if (!locationId) {
-    console.log("🚫 Компонент: locationId отсутствует — показ сообщения об ошибке");
     return (
       <View style={styles.container}>
         <Text>❌ Location ID не найден. Пожалуйста, выберите местоположение.</Text>
@@ -129,11 +136,25 @@ const Weather = () => {
     );
   }
 
+  const getIconUri = (iconNumber: number) => {
+    const formattedNumber = iconNumber < 10 ? `0${iconNumber}` : `${iconNumber}`;
+    return `https://developer.accuweather.com/sites/default/files/${formattedNumber}-s.png`;
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.currentTemp}>
-        🌡 Сейчас: {hourlyWeather[0]?.temperature ?? "—"} ({hourlyWeather[0]?.phrase ?? "—"})
-      </Text>
+<View style={styles.currentWeatherContainer}>
+  <Image
+    source={{ uri: getIconUri(hourlyWeather[0]?.weatherIcon ?? 1) }}
+    style={styles.currentWeatherIcon}
+  />
+  <Text style={styles.currentTemp}>
+    {hourlyWeather[0]?.temperature ?? "—"}
+  </Text>
+  <Text style={styles.currentPhrase}>
+    {hourlyWeather[0]?.phrase ?? "—"}
+  </Text>
+</View>
 
       <Text style={styles.sectionTitle}>⏰ Прогноз на 12 часов</Text>
       <FlatList
@@ -144,6 +165,10 @@ const Weather = () => {
         renderItem={({ item }) => (
           <View style={styles.hourCard}>
             <Text style={styles.hourText}>{item.dateTime}</Text>
+            <Image
+              source={{ uri: getIconUri(item.weatherIcon) }}
+              style={styles.weatherIconSmall}
+            />
             <Text style={styles.hourTemp}>{item.temperature}</Text>
             <Text style={styles.hourPhrase}>{item.phrase}</Text>
           </View>
@@ -196,8 +221,24 @@ const Weather = () => {
       {weather.map((item, index) => (
         <View key={index} style={styles.card}>
           <Text style={styles.date}>{item.dateTime}</Text>
-          <Text style={styles.temp}>День: {item.dayTemperature} — {item.dayPhase}</Text>
-          <Text style={styles.temp}>Ночь: {item.nightTemperature} — {item.nightPhase}</Text>
+          <View style={styles.dayNightRow}>
+            <View style={styles.dayNightBlock}>
+              <Image
+                source={{ uri: getIconUri(item.weatherIconDay) }}
+                style={styles.weatherIconSmall}
+              />
+              <Text style={styles.temp}>День: {item.dayTemperature}</Text>
+              <Text style={styles.phrase}>{item.dayPhase}</Text>
+            </View>
+            <View style={styles.dayNightBlock}>
+              <Image
+                source={{ uri: getIconUri(item.weatherIconNight) }}
+                style={styles.weatherIconSmall}
+              />
+              <Text style={styles.temp}>Ночь: {item.nightTemperature}</Text>
+              <Text style={styles.phrase}>{item.nightPhase}</Text>
+            </View>
+          </View>
         </View>
       ))}
     </ScrollView>
@@ -217,11 +258,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 10,
   },
-  currentTemp: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
   card: {
     marginBottom: 10,
     padding: 15,
@@ -233,10 +269,16 @@ const styles = StyleSheet.create({
   date: {
     fontWeight: "bold",
     marginBottom: 5,
+    fontSize: 16,
   },
   temp: {
     fontSize: 16,
-    marginBottom: 5,
+    marginVertical: 2,
+  },
+  phrase: {
+    fontSize: 14,
+    fontStyle: "italic",
+    textAlign: "center",
   },
   hourlyScroll: {
     paddingVertical: 10,
@@ -261,6 +303,40 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     textAlign: "center",
   },
+  weatherIconSmall: {
+    width: 40,
+    height: 40,
+    marginVertical: 5,
+  },
+  dayNightRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  dayNightBlock: {
+    alignItems: "center",
+    flex: 1,
+  },
+
+  currentWeatherContainer: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  currentWeatherIcon: {
+    width: 120,
+    height: 120,
+    marginBottom: 10,
+  },
+  currentTemp: {
+    fontSize: 32,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  currentPhrase: {
+    fontSize: 18,
+    fontStyle: "italic",
+  },
+  
 });
 
 export default Weather;
