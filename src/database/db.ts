@@ -22,8 +22,8 @@ export const createTables = () => {
         nightPhrase TEXT,
         weatherIdDay INTEGER,
         weatherIdNight INTEGER,
-        HasPrecipitationDay BOOLEAN,
-        HasPrecipitationNight BOOLEAN
+        hasPrecipitationDay BOOLEAN,
+        hasPrecipitationNight BOOLEAN
       )`,
       [],
       () => console.log("✅ Weather table created!"),
@@ -97,8 +97,8 @@ export const saveWeatherData = async (locationId: string, weatherItems: any[]) =
               item.nightPhrase,
               item.weatherIdDay,
               item.weatherIdNight,
-              item.HasPrecipitationDay,
-              item.HasPrecipitationNight
+              item.hasPrecipitationDay,
+              item.hasPrecipitationNight
             ],
             () => console.log("✅ Додано прогноз:", item),
             (_, error) => {

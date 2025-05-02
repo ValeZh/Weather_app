@@ -13,6 +13,8 @@ import { getCachedWeather } from "../utils/weatherCache";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LineChart } from "react-native-chart-kit";
 import weatherIcons from "../assets/weatherIcons"; // 👈 импорт локальных иконок
+import styles from "../styles/WeatherStyles";
+import { Animated } from 'react-native';
 
 type WeatherItem = {
   dateTime: string;
@@ -36,6 +38,7 @@ const Weather = () => {
   const [hourlyWeather, setHourlyWeather] = useState<HourlyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [locationId, setLocationId] = useState<string | null>(null);
+  const fadeAnim = useState(new Animated.Value(0))[0]; // 👈 Состояние анимации прозрачности
 
   useEffect(() => {
     const loadWeather = async () => {
@@ -113,6 +116,12 @@ const Weather = () => {
       } finally {
         setLoading(false);
         console.log("✅ Загрузка завершена");
+        // Запуск анимации появления контента
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }).start();
       }
     };
 
@@ -142,7 +151,10 @@ const Weather = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <Animated.ScrollView
+      contentContainerStyle={styles.container}
+      style={{ opacity: fadeAnim }} // 👈 Применяем анимацию прозрачности
+    >
       <View style={styles.currentWeatherContainer}>
         <Image
           source={getIconSource(hourlyWeather[0]?.weatherIcon ?? 1)}
@@ -163,7 +175,9 @@ const Weather = () => {
         keyExtractor={(_, i) => i.toString()}
         contentContainerStyle={styles.hourlyScroll}
         renderItem={({ item }) => (
-          <View style={styles.hourCard}>
+          <Animated.View
+            style={[styles.hourCard, { opacity: fadeAnim }]} // 👈 Анимация для каждой карточки
+          >
             <Text style={styles.hourText}>{item.dateTime}</Text>
             <Image
               source={getIconSource(item.weatherIcon)}
@@ -171,7 +185,7 @@ const Weather = () => {
             />
             <Text style={styles.hourTemp}>{item.temperature}</Text>
             <Text style={styles.hourPhrase}>{item.phrase}</Text>
-          </View>
+          </Animated.View>
         )}
       />
 
@@ -220,7 +234,10 @@ const Weather = () => {
 
       <Text style={styles.sectionTitle}>🌤 Прогноз на 5 дней</Text>
       {weather.map((item, index) => (
-        <View key={index} style={styles.card}>
+        <Animated.View
+          key={index}
+          style={[styles.card, { opacity: fadeAnim }]} // 👈 Анимация для карточек прогноза
+        >
           <Text style={styles.date}>{item.dateTime}</Text>
           <View style={styles.dayNightRow}>
             <View style={styles.dayNightBlock}>
@@ -240,103 +257,10 @@ const Weather = () => {
               <Text style={styles.phrase}>{item.nightPhase}</Text>
             </View>
           </View>
-        </View>
+        </Animated.View>
       ))}
-    </ScrollView>
+    </Animated.ScrollView>
   );
 };
-
-// 🔥 styles остаются без изменений
-const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    alignItems: "center",
-    padding: 20,
-    backgroundColor: "#f2f2f2",
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  card: {
-    marginBottom: 10,
-    padding: 15,
-    borderWidth: 1,
-    borderRadius: 10,
-    width: "100%",
-    backgroundColor: "#fff",
-  },
-  date: {
-    fontWeight: "bold",
-    marginBottom: 5,
-    fontSize: 16,
-  },
-  temp: {
-    fontSize: 16,
-    marginVertical: 2,
-  },
-  phrase: {
-    fontSize: 14,
-    fontStyle: "italic",
-    textAlign: "center",
-  },
-  hourlyScroll: {
-    paddingVertical: 10,
-  },
-  hourCard: {
-    backgroundColor: "#fff",
-    padding: 10,
-    marginRight: 10,
-    borderRadius: 8,
-    alignItems: "center",
-    width: 100,
-    borderWidth: 1,
-  },
-  hourText: {
-    fontWeight: "bold",
-  },
-  hourTemp: {
-    fontSize: 16,
-    marginVertical: 5,
-  },
-  hourPhrase: {
-    fontStyle: "italic",
-    textAlign: "center",
-  },
-  weatherIconSmall: {
-    width: 40,
-    height: 40,
-    marginVertical: 5,
-  },
-  dayNightRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-  dayNightBlock: {
-    alignItems: "center",
-    flex: 1,
-  },
-  currentWeatherContainer: {
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  currentWeatherIcon: {
-    width: 120,
-    height: 120,
-    marginBottom: 10,
-  },
-  currentTemp: {
-    fontSize: 32,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
-  currentPhrase: {
-    fontSize: 18,
-    fontStyle: "italic",
-  },
-});
 
 export default Weather;

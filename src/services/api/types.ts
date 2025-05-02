@@ -84,6 +84,7 @@ export type HourlyForecast = {
     Value: number;
   };
   PrecipitationProbability: number;
+  
 };
 
 export type HourlyWeatherResponse = HourlyForecast[];
