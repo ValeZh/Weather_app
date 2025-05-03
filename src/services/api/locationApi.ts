@@ -1,5 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { CitySearchDataMinimal, CityData, CountryData, RegionData } from "././types";
+import { CitySearchDataMinimal, CityData, CountryData, RegionData,LocationByCoordsData } from "././types";
 
 // Выносим API ключ и базовый URL в переменные
 const API_KEY = "6XpRpAFnCiKespheTuuJnev2ovVsP1GV";
@@ -22,6 +22,10 @@ export const locationApi = createApi({
       query: ({ countryCode, cityName }) =>
         `/locations/v1/cities/${countryCode}/search?apikey=${API_KEY}&q=${encodeURIComponent(cityName)}`,
     }),
+    getLocationByCoords: builder.query<LocationByCoordsData, { lat: number; lon: number }>({
+      query: ({ lat, lon }) =>
+        `/locations/v1/cities/geoposition/search?apikey=${API_KEY}&q=${lat},${lon}`,
+    }),
   }),
 });
 
@@ -30,4 +34,5 @@ export const {
   useGetCountriesQuery,
   useGetCitiesQuery,
   useSearchLocationIdQuery,
+  useGetLocationByCoordsQuery,
 } = locationApi;

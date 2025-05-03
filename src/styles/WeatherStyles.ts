@@ -1,6 +1,10 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, Platform, StatusBar } from "react-native";
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight ?? 24 : 0,
+  },
   container: {
     flexGrow: 1,
     alignItems: "center",
@@ -74,20 +78,20 @@ const styles = StyleSheet.create({
   },
   currentWeatherContainer: {
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 1,
   },
   currentWeatherIcon: {
-    width: 120,
-    height: 120,
-    marginBottom: 10,
+    width: 180, // увеличено
+    height: 180,
+    marginBottom: 14,
   },
   currentTemp: {
-    fontSize: 32,
+    fontSize: 35, // увеличено
     fontWeight: "bold",
-    marginBottom: 5,
+    marginBottom: 8,
   },
   currentPhrase: {
-    fontSize: 18,
+    fontSize: 20, // увеличено
     fontStyle: "italic",
   },
 });

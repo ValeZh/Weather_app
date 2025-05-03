@@ -127,4 +127,20 @@ export type CitySearchResultMinimal = {
 
 export type CitySearchDataMinimal = CitySearchResultMinimal[];
 
-
+export type LocationByCoordsData =  {
+  Key: string;
+  LocalizedName: string;
+  EnglishName: string;
+  Country: {
+    ID: string;
+    LocalizedName: string;
+  };
+  AdministrativeArea: {
+    ID: string;
+    LocalizedName: string;
+  };
+  GeoPosition: {
+    Latitude: number;
+    Longitude: number;
+  };
+}

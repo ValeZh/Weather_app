@@ -43,28 +43,19 @@ const LocationSelector = () => {
 
   const handleGetLocationId = () => {
     if (!selectedCountry || !selectedCity) {
-      Alert.alert("Ошибка", "Выберите страну и город");
+      Alert.alert("Error", "Please select both country and city");
       return;
     }
 
     setQueryParams({ countryCode: selectedCountry, cityName: selectedCity });
     setCooldown(true);
     setCanContinue(false);
-    setTimeout(() => setCooldown(false), 10000); // 10 сек
-  };
-
-  const handleReset = () => {
-    setSelectedRegion("");
-    setSelectedCountry("");
-    setSelectedCity("");
-    setLocationId("");
-    setCanContinue(false);
-    setQueryParams(null);
+    setTimeout(() => setCooldown(false), 10000); // 10 seconds cooldown
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Регион:</Text>
+      <Text style={styles.label}>Region:</Text>
       <Picker
         selectedValue={selectedRegion}
         onValueChange={(value: string) => {
@@ -76,7 +67,7 @@ const LocationSelector = () => {
         }}
         style={styles.picker}
       >
-        <Picker.Item label="Выберите регион" value="" />
+        <Picker.Item label="Select a region" value="" />
         {regions.map((region) => (
           <Picker.Item key={region.ID} label={region.LocalizedName} value={region.ID} />
         ))}
@@ -84,7 +75,7 @@ const LocationSelector = () => {
 
       {selectedRegion && (
         <>
-          <Text style={styles.label}>Страна:</Text>
+          <Text style={styles.label}>Country:</Text>
           <Picker
             selectedValue={selectedCountry}
             onValueChange={(value: string) => {
@@ -95,7 +86,7 @@ const LocationSelector = () => {
             }}
             style={styles.picker}
           >
-            <Picker.Item label="Выберите страну" value="" />
+            <Picker.Item label="Select a country" value="" />
             {countries.map((country) => (
               <Picker.Item key={country.ID} label={country.LocalizedName} value={country.ID} />
             ))}
@@ -105,7 +96,7 @@ const LocationSelector = () => {
 
       {selectedCountry && (
         <>
-          <Text style={styles.label}>Город:</Text>
+          <Text style={styles.label}>City:</Text>
           <Picker
             selectedValue={selectedCity}
             onValueChange={(value: string) => {
@@ -115,7 +106,7 @@ const LocationSelector = () => {
             }}
             style={styles.picker}
           >
-            <Picker.Item label="Выберите город" value="" />
+            <Picker.Item label="Select a city" value="" />
             {cities.map((city) => (
               <Picker.Item key={city.ID} label={city.LocalizedName} value={city.EnglishName} />
             ))}
@@ -125,7 +116,7 @@ const LocationSelector = () => {
 
       <View style={styles.buttonContainer}>
         <Button
-          title={cooldown ? "Подождите..." : "Получить Location ID"}
+          title={cooldown ? "Please wait..." : "Get Location ID"}
           onPress={handleGetLocationId}
           disabled={cooldown || !selectedCountry || !selectedCity}
         />
@@ -135,7 +126,12 @@ const LocationSelector = () => {
         <View style={styles.buttonContainer}>
           <Button
             title="Continue"
-            onPress={() => navigation.navigate("Weather", { locationId })}
+            onPress={() =>
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "Weather", params: { locationId } }],
+              })
+            }
           />
         </View>
       )}
