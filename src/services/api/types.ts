@@ -47,6 +47,18 @@ export type WeatherForecastResponse = {
   DailyForecasts: FiveDayForecast[];
 };
 
+export type TemperatureValue = {
+  Value: number;
+  Unit: "F" | "C";
+  UnitType: number;
+};
+
+export type ForecastDetails = {
+  Icon: number;
+  IconPhrase: string;
+  HasPrecipitation: boolean;
+};
+
 export type FiveDayForecast = {
   Date: string;
   EpochDate: number;
@@ -61,17 +73,21 @@ export type FiveDayForecast = {
   Link: string;
 };
 
-export type TemperatureValue = {
-  Value: number;
-  Unit: "F" | "C"; // AccuWeather возвращает обычно в F, но можно расширить
-  UnitType: number;
+export type HourlyForecast = {
+  DateTime: string;
+  EpochDateTime: number;
+  WeatherIcon: number;
+  IconPhrase: string;
+  HasPrecipitation: number;  // Тип изменен с boolean на number (0 или 1)
+  IsDaylight: number;        // Тип изменен с boolean на number (0 или 1)
+  Temperature: {
+    Value: number;
+  };
+  PrecipitationProbability: number;
+  
 };
 
-export type ForecastDetails = {
-  Icon: number;
-  IconPhrase: string;
-  HasPrecipitation: boolean;
-};
+export type HourlyWeatherResponse = HourlyForecast[];
 
 type Region = {
   ID: string;
@@ -110,3 +126,21 @@ export type CitySearchResultMinimal = {
 };
 
 export type CitySearchDataMinimal = CitySearchResultMinimal[];
+
+export type LocationByCoordsData =  {
+  Key: string;
+  LocalizedName: string;
+  EnglishName: string;
+  Country: {
+    ID: string;
+    LocalizedName: string;
+  };
+  AdministrativeArea: {
+    ID: string;
+    LocalizedName: string;
+  };
+  GeoPosition: {
+    Latitude: number;
+    Longitude: number;
+  };
+}

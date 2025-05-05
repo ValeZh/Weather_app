@@ -4,8 +4,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Picker } from "@react-native-picker/picker";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../navigation/AppNavigator"; // путь может отличаться
-
+import { RootStackParamList } from "../navigation/AppNavigator";
+import styles from "../styles/LocationSelectorsStyles";
 import {
   useGetRegionsQuery,
   useGetCountriesQuery,
@@ -20,49 +20,52 @@ const LocationSelector = () => {
   const [selectedCountry, setSelectedCountry] = useState<string>("");
   const [selectedCity, setSelectedCity] = useState<string>("");
   const [locationId, setLocationId] = useState<string>("");
+  const [cooldown, setCooldown] = useState(false);
+  const [canContinue, setCanContinue] = useState(false);
+  const [queryParams, setQueryParams] = useState<{ countryCode: string; cityName: string } | null>(null);
 
   const { data: regions = [] } = useGetRegionsQuery();
   const { data: countries = [] } = useGetCountriesQuery(selectedRegion, { skip: !selectedRegion });
   const { data: cities = [] } = useGetCitiesQuery(selectedCountry, { skip: !selectedCountry });
-
-  const { data: locationData } = useSearchLocationIdQuery({
-    countryCode: selectedCountry,
-    cityName: selectedCity,
-  });
+  const { data: locationData } = useSearchLocationIdQuery(queryParams!, { skip: !queryParams });
 
   useEffect(() => {
     if (locationData && locationData.length > 0) {
       const id = locationData[0].Key;
       setLocationId(id);
-      AsyncStorage.setItem("locationId", id)
-        .then(() => {
-          Alert.alert("Success", "Location ID saved successfully!");
-          navigation.navigate("Weather", { locationId: id });
-        })
-        .catch((err) => {
-          console.error("Error saving location ID:", err);
-          Alert.alert("Error", "Failed to save location ID");
-        });
+      setCanContinue(true);
+      AsyncStorage.setItem("locationId", id).catch((err) => {
+        console.error("Error saving location ID:", err);
+        Alert.alert("Error", "Failed to save location ID");
+      });
     }
   }, [locationData]);
 
-  const resetSelection = () => {
-    setSelectedRegion("");
-    setSelectedCountry("");
-    setSelectedCity("");
-    setLocationId("");
+  const handleGetLocationId = () => {
+    if (!selectedCountry || !selectedCity) {
+      Alert.alert("Error", "Please select both country and city");
+      return;
+    }
+
+    setQueryParams({ countryCode: selectedCountry, cityName: selectedCity });
+    setCooldown(true);
+    setCanContinue(false);
+    setTimeout(() => setCooldown(false), 10000); // 10 seconds cooldown
   };
 
   return (
-    <View>
-      <Text>Select Region:</Text>
+    <View style={styles.container}>
+      <Text style={styles.label}>Region:</Text>
       <Picker
         selectedValue={selectedRegion}
         onValueChange={(value: string) => {
           setSelectedRegion(value);
           setSelectedCountry("");
           setSelectedCity("");
+          setLocationId("");
+          setCanContinue(false);
         }}
+        style={styles.picker}
       >
         <Picker.Item label="Select a region" value="" />
         {regions.map((region) => (
@@ -72,13 +75,16 @@ const LocationSelector = () => {
 
       {selectedRegion && (
         <>
-          <Text>Select Country:</Text>
+          <Text style={styles.label}>Country:</Text>
           <Picker
             selectedValue={selectedCountry}
             onValueChange={(value: string) => {
               setSelectedCountry(value);
               setSelectedCity("");
+              setLocationId("");
+              setCanContinue(false);
             }}
+            style={styles.picker}
           >
             <Picker.Item label="Select a country" value="" />
             {countries.map((country) => (
@@ -90,10 +96,15 @@ const LocationSelector = () => {
 
       {selectedCountry && (
         <>
-          <Text>Select City:</Text>
+          <Text style={styles.label}>City:</Text>
           <Picker
             selectedValue={selectedCity}
-            onValueChange={(value: string) => setSelectedCity(value)}
+            onValueChange={(value: string) => {
+              setSelectedCity(value);
+              setLocationId("");
+              setCanContinue(false);
+            }}
+            style={styles.picker}
           >
             <Picker.Item label="Select a city" value="" />
             {cities.map((city) => (
@@ -103,9 +114,31 @@ const LocationSelector = () => {
         </>
       )}
 
-      {locationId && <Text>Location ID: {locationId}</Text>}
+      <View style={styles.buttonContainer}>
+        <Button
+          title={cooldown ? "Please wait..." : "Get Location ID"}
+          onPress={handleGetLocationId}
+          disabled={cooldown || !selectedCountry || !selectedCity}
+        />
+      </View>
 
-      <Button title="Reset Selection" onPress={resetSelection} />
+      {canContinue && (
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Continue"
+            onPress={() =>
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "Weather", params: { locationId } }],
+              })
+            }
+          />
+        </View>
+      )}
+
+      {locationId ? (
+        <Text style={styles.locationIdText}>🌍 Location ID: {locationId}</Text>
+      ) : null}
     </View>
   );
 };
