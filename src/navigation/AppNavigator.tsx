@@ -36,7 +36,7 @@ const AppNavigator = () => {
       <Stack.Screen
         name="LocationSelector"
         component={LocationSelector}
-        options={{ title: "Выбор локации" }} // хеадер остался
+        options={{ title: "Select location" }} // хеадер остался
       />
       <Stack.Screen
         name="Weather"
