@@ -18,7 +18,7 @@ import { createTables } from './src/database/db'; // путь к твоему db
 function App(): React.JSX.Element {
 
   useEffect(() => {
-    createTables(); // вызываем при запуске
+    createTables(); // called at startup
   }, []);
 
   return (
@@ -29,14 +29,5 @@ function App(): React.JSX.Element {
     </Provider>
   );
 }
-
-const styles = StyleSheet.create({
-  mainContainer: {
-    backgroundColor: 'red',
-    alignItems : 'center',
-    justifyContent : 'center',
-    flex : 1,
-  },
-});
 
 export default App;

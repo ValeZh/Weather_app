@@ -10,22 +10,26 @@ import {
   updateLastFetchTime,
   createTables,
 } from "../database/db";
-import { HourlyForecast } from "../services/api/types";
 
+// Time interval: 12 hours in milliseconds
 const TWELVE_HOURS = 12 * 60 * 60 * 1000;
 
 export const getCachedWeather = async () => {
+  // Get locationId saved in AsyncStorage (set by user earlier)
   const locationId = await AsyncStorage.getItem("locationId");
 
   if (!locationId) {
-    console.error("❌ Ошибка: locationId не найден в AsyncStorage.");
+    console.error("❌ Error: locationId not found in AsyncStorage.");
     return { daily: [], hourly: [] };
   }
 
-  await createTables();
+  await createTables(); // Ensure database tables exist
+
+  // Check when weather data was last fetched
   const lastFetch = await checkLastFetchTime(locationId);
   const now = Date.now();
 
+  // Helper function: fetch data from API and store it to local SQLite DB
   const fetchAndStoreToDb = async () => {
     const dailyResult = await store.dispatch(
       weatherApi.endpoints.getFiveDayForecast.initiate(locationId)
@@ -38,55 +42,31 @@ export const getCachedWeather = async () => {
       dailyResult && "data" in dailyResult && dailyResult.data &&
       hourlyResult && "data" in hourlyResult && hourlyResult.data
     ) {
-      const dailyForecasts = dailyResult.data.DailyForecasts;
-      const hourlyForecasts = hourlyResult.data;
-
-      const formattedDaily = dailyForecasts.map((day: any) => ({
-        epochDate: Math.floor(new Date(day.Date).getTime() / 1000),
-        dayTemperature: day.Temperature.Maximum.Value,
-        nightTemperature: day.Temperature.Minimum.Value,
-        dayPhrase: day.Day.IconPhrase,
-        nightPhrase: day.Night.IconPhrase,
-        weatherIdDay: day.Day.Icon,
-        weatherIdNight: day.Night.Icon,
-        hasPrecipitationDay: day.Day.HasPrecipitation ? 1 : 0,
-        hasPrecipitationNight: day.Night.HasPrecipitation ? 1 : 0,
-      }));
-
-      const formattedHourly = hourlyForecasts.map((hour: any) => ({
-        DateTime: hour.DateTime,
-        EpochDateTime: Math.floor(new Date(hour.DateTime).getTime() / 1000),
-        WeatherIcon: hour.WeatherIcon,
-        IconPhrase: hour.IconPhrase,
-        HasPrecipitation: hour.HasPrecipitation ? 1 : 0,
-        IsDaylight: hour.IsDaylight ? 1 : 0,
-        Temperature: {
-          Value: hour.Temperature.Value,
-        },
-        PrecipitationProbability: hour.PrecipitationProbability,
-      }));
-
-      await saveWeatherData(locationId, formattedDaily);
-      await saveHourlyWeatherData(locationId, formattedHourly);
+      // Save fetched data to local database
+      await saveWeatherData(locationId, dailyResult.data.DailyForecasts);
+      await saveHourlyWeatherData(locationId, hourlyResult.data);
       await updateLastFetchTime(locationId);
     } else {
-      console.error("❌ Ошибка получения данных с API");
+      console.error("❌ Error fetching data from API");
     }
   };
 
+  // If first time or data is older than 12 hours, fetch new data
   if (!lastFetch || now - lastFetch >= TWELVE_HOURS) {
     await fetchAndStoreToDb();
   }
 
+  // Load weather data from local database
   const localDaily = await loadWeatherData(locationId);
   const localHourly = await loadHourlyWeatherData(locationId);
   const result = { daily: localDaily, hourly: localHourly };
 
+  // If data exists, return it; otherwise warn
   if ((localDaily?.length ?? 0) > 0 && (localHourly?.length ?? 0) > 0) {
-    console.log("💾 Возвращено из БД:", JSON.stringify(result, null, 2));
+    console.log("💾 Loaded from local DB:", JSON.stringify(result, null, 2));
     return result;
   } else {
-    console.warn("⚠️ Данные в БД не найдены даже после запроса.");
+    console.warn("⚠️ No weather data found in local DB even after fetch.");
     return { daily: [], hourly: [] };
   }
 };

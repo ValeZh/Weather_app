@@ -29,20 +29,20 @@ const AppNavigator = () => {
     checkLocationId();
   }, []);
 
-  if (!initialRoute) return null; // или лоадер
-
+  if (!initialRoute) return null; 
+  
   return (
     <Stack.Navigator initialRouteName={initialRoute}>
       <Stack.Screen
         name="LocationSelector"
         component={LocationSelector}
-        options={{ title: "Select location" }} // хеадер остался
+        options={{ title: "Select location" }} 
       />
       <Stack.Screen
         name="Weather"
         component={Weather}
         initialParams={{ locationId: storedLocationId! }}
-        options={{ headerShown: false }} // хеадер убран
+        options={{ headerShown: false }} 
       />
     </Stack.Navigator>
   );

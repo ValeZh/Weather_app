@@ -5,7 +5,7 @@ import {
   HourlyWeatherResponse
 } from "./types";
 
-const API_KEY = "6XpRpAFnCiKespheTuuJnev2ovVsP1GV";
+const API_KEY = "Fn4AeO2lxPDRsdpHrPTUAhse4HcHD3wU";
 
 export const weatherApi = createApi({
   reducerPath: "weatherApi",
@@ -23,7 +23,7 @@ export const weatherApi = createApi({
     }),
     getTwelveHourForecast: builder.query<HourlyWeatherResponse, string>({
       query: (locationId) =>
-        `/forecasts/v1/hourly/12hour/${locationId}?apikey=${API_KEY}`, // Check if this endpoint is correct
+        `/forecasts/v1/hourly/12hour/${locationId}?apikey=${API_KEY}`,
     }),
   }),
 });

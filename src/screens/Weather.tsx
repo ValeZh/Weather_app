@@ -32,7 +32,7 @@ type WeatherItem = {
 };
 
 type HourlyItem = {
-  dateTime: string;
+  hourLabel: string; 
   temperature: string;
   phrase: string;
   weatherIcon: number;
@@ -86,18 +86,13 @@ const Weather = () => {
         }
 
         if (result?.hourly && Array.isArray(result.hourly)) {
-          const offsetMinutes = new Date().getTimezoneOffset();
-          const offsetHours = -offsetMinutes / 60;
-
           const hourlyFormatted = result.hourly.map((item) => {
             const date = new Date(item.epochDateTime * 1000);
-            date.setHours(date.getHours() + offsetHours);
-
-            const hour = date.getHours().toString().padStart(2, "0");
-            const hourStr = `${hour}:00`;
+            const hour = date.getHours().toString().padStart(2, "0") + ":00";
             const tempC = `${Math.round((item.temperatureValue - 32) * 5 / 9)}°C`;
+
             return {
-              dateTime: hourStr,
+              hourLabel: hour,
               temperature: tempC,
               phrase: item.iconPhrase,
               weatherIcon: item.weatherIcon,
@@ -185,7 +180,7 @@ const Weather = () => {
           contentContainerStyle={styles.hourlyScroll}
           renderItem={({ item }) => (
             <Animated.View style={[styles.hourCard, { opacity: fadeAnim }]}>
-              <Text style={styles.hourText}>{item.dateTime}</Text>
+              <Text style={styles.hourText}>{item.hourLabel}</Text>
               <Image
                 source={getIconSource(item.weatherIcon)}
                 style={styles.weatherIconSmall}
@@ -201,7 +196,7 @@ const Weather = () => {
             <Text style={styles.sectionTitle}>📈 Hourly Temperature</Text>
             <LineChart
               data={{
-                labels: hourlyWeather.map((item) => item.dateTime),
+                labels: hourlyWeather.map((item) => item.hourLabel),
                 datasets: [
                   {
                     data: hourlyWeather.map((item) =>
