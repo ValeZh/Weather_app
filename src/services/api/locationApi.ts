@@ -2,7 +2,7 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { CitySearchDataMinimal, CityData, CountryData, RegionData,LocationByCoordsData } from "././types";
 
 // Выносим API ключ и базовый URL в переменные
-const API_KEY = "Fn4AeO2lxPDRsdpHrPTUAhse4HcHD3wU";
+const API_KEY = "6XpRpAFnCiKespheTuuJnev2ovVsP1GV";
 const BASE_URL = "http://dataservice.accuweather.com";
 
 export const locationApi = createApi({

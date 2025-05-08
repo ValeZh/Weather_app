@@ -20,6 +20,8 @@ import styles from "../styles/WeatherStyles";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigator";
+import { clearAllWeatherDataForLocation} from "../database/db"; 
+
 
 type DayItem = {
   dateTime: string;
@@ -123,13 +125,34 @@ const Weather = () => {
     loadWeather();
   }, []);
 
-  const handleChangeLocation = async () => {
-    await AsyncStorage.removeItem("locationId");
+const handleChangeLocation = async () => {
+  try {
+    const currentId = await AsyncStorage.getItem("locationId");
+
+    if (!currentId) {
+      console.warn("⚠️ No locationId found in AsyncStorage. Nothing to clear.");
+    } else {
+      console.log("🔍 Found locationId:", currentId);
+      
+      await clearAllWeatherDataForLocation(currentId);
+      console.log("🧹 Cleared all weather data for locationId:", currentId);
+
+      await AsyncStorage.removeItem("locationId");
+      console.log("🗑 Removed locationId from AsyncStorage");
+    }
+
+    const afterClearId = await AsyncStorage.getItem("locationId");
+    console.log("📦 locationId after clearing:", afterClearId);
+
     navigation.reset({
       index: 0,
       routes: [{ name: "LocationSelector" }],
     });
-  };
+    console.log("🚀 Navigated to LocationSelector screen");
+  } catch (error) {
+    console.error("❌ Failed to change location:", error);
+  }
+};
 
   if (loading) {
     return (

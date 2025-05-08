@@ -301,6 +301,11 @@ const logLastFetchTable = () => {
 };
 
 export const clearAllWeatherDataForLocation = (locationId: string) => {
+  if (!locationId) {
+    console.warn("⚠️ Attempted to clear data for empty locationId.");
+    return;
+  }
+
   db.transaction(
     (tx) => {
       tx.executeSql(
