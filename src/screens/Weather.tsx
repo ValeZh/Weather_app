@@ -21,7 +21,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigator";
 
-type WeatherItem = {
+type DayItem = {
   dateTime: string;
   dayTemperature: string;
   dayPhase: string;
@@ -39,7 +39,7 @@ type HourlyItem = {
 };
 
 const Weather = () => {
-  const [weather, setWeather] = useState<WeatherItem[]>([]);
+  const [daysWeather, setDayWeather] = useState<DayItem[]>([]);
   const [hourlyWeather, setHourlyWeather] = useState<HourlyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [locationId, setLocationId] = useState<string | null>(null);
@@ -82,7 +82,7 @@ const Weather = () => {
           });
 
           console.log("✅ Formatted daily data:", formatted);
-          setWeather(formatted);
+          setDayWeather(formatted);
         }
 
         if (result?.hourly && Array.isArray(result.hourly)) {
@@ -230,7 +230,7 @@ const Weather = () => {
         )}
 
         <Text style={styles.sectionTitle}>🌤 5-Day Forecast</Text>
-        {weather.map((item, index) => (
+        {daysWeather.map((item, index) => (
           <Animated.View key={index} style={[styles.card, { opacity: fadeAnim }]}>
             <Text style={styles.date}>{item.dateTime}</Text>
             <View style={styles.dayNightRow}>

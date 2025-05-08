@@ -6,6 +6,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigator";
 import styles from "../styles/LocationSelectorsStyles";
+import { clearAllWeatherDataForLocation } from "../database/db";
 import {
   useGetRegionsQuery,
   useGetCountriesQuery,
@@ -30,15 +31,29 @@ const LocationSelector = () => {
   const { data: locationData } = useSearchLocationIdQuery(queryParams!, { skip: !queryParams });
 
   useEffect(() => {
-    if (locationData && locationData.length > 0) {
-      const id = locationData[0].Key;
-      setLocationId(id);
-      setCanContinue(true);
-      AsyncStorage.setItem("locationId", id).catch((err) => {
-        console.error("Error saving location ID:", err);
-        Alert.alert("Error", "Failed to save location ID");
-      });
-    }
+    const handleLocationChange = async () => {
+      if (locationData && locationData.length > 0) {
+        const newId = locationData[0].Key;
+        setLocationId(newId);
+        setCanContinue(true);
+
+        try {
+          const oldId = await AsyncStorage.getItem("locationId");
+
+          if (oldId && oldId !== newId) {
+            clearAllWeatherDataForLocation(oldId);
+          }
+
+          await AsyncStorage.setItem("locationId", newId);
+          console.log("📦 Новий locationId збережено:", newId);
+        } catch (err) {
+          console.error("❌ Помилка при оновленні locationId:", err);
+          Alert.alert("Error", "Failed to update location ID");
+        }
+      }
+    };
+
+    handleLocationChange();
   }, [locationData]);
 
   const handleGetLocationId = () => {

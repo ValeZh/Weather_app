@@ -299,3 +299,45 @@ const logLastFetchTable = () => {
     );
   });
 };
+
+export const clearAllWeatherDataForLocation = (locationId: string) => {
+  db.transaction(
+    (tx) => {
+      tx.executeSql(
+        `DELETE FROM weather WHERE location_id = ?`,
+        [locationId],
+        () => console.log(`🧹 Cleared weather for location_id = ${locationId}`),
+        (_, error) => {
+          console.error("❌ Error clearing weather table:", error);
+          return false;
+        }
+      );
+
+      tx.executeSql(
+        `DELETE FROM weather_12_hours WHERE location_id = ?`,
+        [locationId],
+        () => console.log(`🧹 Cleared weather_12_hours for location_id = ${locationId}`),
+        (_, error) => {
+          console.error("❌ Error clearing weather_12_hours table:", error);
+          return false;
+        }
+      );
+
+      tx.executeSql(
+        `DELETE FROM last_fetch_time WHERE locationId = ?`,
+        [locationId],
+        () => console.log(`🧹 Cleared last_fetch_time for location_id = ${locationId}`),
+        (_, error) => {
+          console.error("❌ Error clearing last_fetch_time table:", error);
+          return false;
+        }
+      );
+    },
+    (error) => {
+      console.error("❌ Transaction error during full data clear:", error);
+    },
+    () => {
+      console.log("✅ All weather-related tables cleared for locationId:", locationId);
+    }
+  );
+};
