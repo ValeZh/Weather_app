@@ -6,6 +6,8 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigator";
 import styles from "../styles/LocationSelectorsStyles";
+
+// Custom API hooks for fetching region/country/city/location data
 import {
   useGetRegionsQuery,
   useGetCountriesQuery,
@@ -14,26 +16,32 @@ import {
 } from "../services/api/locationApi";
 
 const LocationSelector = () => {
+  // Hook for navigation to other screens
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
+  // Local UI state
   const [selectedRegion, setSelectedRegion] = useState<string>("");
   const [selectedCountry, setSelectedCountry] = useState<string>("");
   const [selectedCity, setSelectedCity] = useState<string>("");
   const [locationId, setLocationId] = useState<string>("");
-  const [cooldown, setCooldown] = useState(false);
-  const [canContinue, setCanContinue] = useState(false);
+  const [cooldown, setCooldown] = useState(false);        // Prevents rapid repeated API requests
+  const [canContinue, setCanContinue] = useState(false);  // Controls visibility of "Continue" button
   const [queryParams, setQueryParams] = useState<{ countryCode: string; cityName: string } | null>(null);
 
-  const { data: regions = [] } = useGetRegionsQuery();
-  const { data: countries = [] } = useGetCountriesQuery(selectedRegion, { skip: !selectedRegion });
-  const { data: cities = [] } = useGetCitiesQuery(selectedCountry, { skip: !selectedCountry });
-  const { data: locationData } = useSearchLocationIdQuery(queryParams!, { skip: !queryParams });
+  // API queries to fetch dropdown data
+  const { data: regions = [] } = useGetRegionsQuery(); // All regions
+  const { data: countries = [] } = useGetCountriesQuery(selectedRegion, { skip: !selectedRegion }); // Countries in selected region
+  const { data: cities = [] } = useGetCitiesQuery(selectedCountry, { skip: !selectedCountry }); // Cities in selected country
+  const { data: locationData } = useSearchLocationIdQuery(queryParams!, { skip: !queryParams }); // Location ID for selected country+city
 
+  // When location data is received from the API, save it locally
   useEffect(() => {
     if (locationData && locationData.length > 0) {
       const id = locationData[0].Key;
       setLocationId(id);
-      setCanContinue(true);
+      setCanContinue(true); // Enable continue button
+
+      // Store location ID in persistent storage
       AsyncStorage.setItem("locationId", id).catch((err) => {
         console.error("Error saving location ID:", err);
         Alert.alert("Error", "Failed to save location ID");
@@ -41,6 +49,7 @@ const LocationSelector = () => {
     }
   }, [locationData]);
 
+  // Called when user taps "Get Location ID"
   const handleGetLocationId = () => {
     if (!selectedCountry || !selectedCity) {
       Alert.alert("Error", "Please select both country and city");
@@ -50,7 +59,9 @@ const LocationSelector = () => {
     setQueryParams({ countryCode: selectedCountry, cityName: selectedCity });
     setCooldown(true);
     setCanContinue(false);
-    setTimeout(() => setCooldown(false), 10000); // 10 seconds cooldown
+
+    // Disable button for 10 seconds to prevent spamming
+    setTimeout(() => setCooldown(false), 10000);
   };
 
   return (
@@ -59,6 +70,7 @@ const LocationSelector = () => {
       <Picker
         selectedValue={selectedRegion}
         onValueChange={(value: string) => {
+          // Reset values when a region changes
           setSelectedRegion(value);
           setSelectedCountry("");
           setSelectedCity("");
@@ -79,6 +91,7 @@ const LocationSelector = () => {
           <Picker
             selectedValue={selectedCountry}
             onValueChange={(value: string) => {
+              // Reset city when country changes
               setSelectedCountry(value);
               setSelectedCity("");
               setLocationId("");
@@ -114,6 +127,7 @@ const LocationSelector = () => {
         </>
       )}
 
+      {/* Button to get Location ID */}
       <View style={styles.buttonContainer}>
         <Button
           title={cooldown ? "Please wait..." : "Get Location ID"}
@@ -122,6 +136,7 @@ const LocationSelector = () => {
         />
       </View>
 
+      {/* "Continue" button appears only when ID is available */}
       {canContinue && (
         <View style={styles.buttonContainer}>
           <Button
@@ -136,6 +151,7 @@ const LocationSelector = () => {
         </View>
       )}
 
+      {/* Display location ID if available */}
       {locationId ? (
         <Text style={styles.locationIdText}>🌍 Location ID: {locationId}</Text>
       ) : null}

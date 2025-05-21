@@ -2,8 +2,6 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
-  ScrollView,
   ActivityIndicator,
   FlatList,
   Dimensions,
@@ -16,13 +14,13 @@ import { getCachedWeather } from "../utils/weatherCache";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LineChart } from "react-native-chart-kit";
 import weatherIcons from "../assets/weatherIcons";
-import styles from "../styles/WeatherStyles";
+import styles, { fadeInAnimation, chartConfig, chartStyle } from "../styles/WeatherStyles";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigator";
-import { clearAllWeatherDataForLocation} from "../database/db"; 
+import { clearAllWeatherDataForLocation } from "../database/db";
 
-
+// Type definitions for daily and hourly weather items
 type DayItem = {
   dateTime: string;
   dayTemperature: string;
@@ -34,26 +32,29 @@ type DayItem = {
 };
 
 type HourlyItem = {
-  hourLabel: string; 
+  hourLabel: string;
   temperature: string;
   phrase: string;
   weatherIcon: number;
 };
 
 const Weather = () => {
+  // Local component state
   const [daysWeather, setDayWeather] = useState<DayItem[]>([]);
   const [hourlyWeather, setHourlyWeather] = useState<HourlyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [locationId, setLocationId] = useState<string | null>(null);
-  const fadeAnim = useState(new Animated.Value(0))[0];
+  const fadeAnim = useState(new Animated.Value(0))[0]; // For fade-in animation
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
+  // Load weather data when component mounts
   useEffect(() => {
     const loadWeather = async () => {
       setLoading(true);
       console.log("⏳ Weather loading started");
 
       try {
+        // Retrieve locationId from AsyncStorage
         const savedId = await AsyncStorage.getItem("locationId");
         console.log("📍 Loaded locationId from storage:", savedId);
         setLocationId(savedId);
@@ -63,9 +64,11 @@ const Weather = () => {
           return;
         }
 
+        // Fetch data from local cache (or API fallback)
         const result = await getCachedWeather();
         console.log("📦 Fetched data from cache or DB:", result);
 
+        // Format daily data
         if (result?.daily && Array.isArray(result.daily)) {
           const formatted = result.daily.map((item) => {
             const date = new Date(item.epochDate * 1000).toLocaleDateString();
@@ -83,10 +86,10 @@ const Weather = () => {
             };
           });
 
-          console.log("✅ Formatted daily data:", formatted);
           setDayWeather(formatted);
         }
 
+        // Format hourly data
         if (result?.hourly && Array.isArray(result.hourly)) {
           const hourlyFormatted = result.hourly.map((item) => {
             const date = new Date(item.epochDateTime * 1000);
@@ -101,11 +104,10 @@ const Weather = () => {
             };
           });
 
-          console.log("✅ Formatted hourly data:", hourlyFormatted);
           setHourlyWeather(hourlyFormatted);
         }
-
       } catch (error: unknown) {
+        // Handle unexpected errors
         if (error instanceof Error) {
           console.error("❌ Weather loading error:", error.stack);
         } else {
@@ -114,46 +116,45 @@ const Weather = () => {
       } finally {
         setLoading(false);
         console.log("✅ Weather loading finished");
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }).start();
+
+        // Start fade-in animation
+        fadeInAnimation(fadeAnim).start();
       }
     };
 
     loadWeather();
   }, []);
 
-const handleChangeLocation = async () => {
-  try {
-    const currentId = await AsyncStorage.getItem("locationId");
+  // Clear location and weather data, then navigate to LocationSelector
+  const handleChangeLocation = async () => {
+    try {
+      const currentId = await AsyncStorage.getItem("locationId");
 
-    if (!currentId) {
-      console.warn("⚠️ No locationId found in AsyncStorage. Nothing to clear.");
-    } else {
-      console.log("🔍 Found locationId:", currentId);
-      
-      await clearAllWeatherDataForLocation(currentId);
-      console.log("🧹 Cleared all weather data for locationId:", currentId);
+      if (!currentId) {
+        console.warn("⚠️ No locationId found in AsyncStorage. Nothing to clear.");
+      } else {
+        console.log("🔍 Found locationId:", currentId);
 
-      await AsyncStorage.removeItem("locationId");
-      console.log("🗑 Removed locationId from AsyncStorage");
+        await clearAllWeatherDataForLocation(currentId);
+        console.log("🧹 Cleared all weather data for locationId:", currentId);
+
+        await AsyncStorage.removeItem("locationId");
+        console.log("🗑 Removed locationId from AsyncStorage");
+      }
+
+      const afterClearId = await AsyncStorage.getItem("locationId");
+      console.log("📦 locationId after clearing:", afterClearId);
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "LocationSelector" }],
+      });
+    } catch (error) {
+      console.error("❌ Failed to change location:", error);
     }
+  };
 
-    const afterClearId = await AsyncStorage.getItem("locationId");
-    console.log("📦 locationId after clearing:", afterClearId);
-
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "LocationSelector" }],
-    });
-    console.log("🚀 Navigated to LocationSelector screen");
-  } catch (error) {
-    console.error("❌ Failed to change location:", error);
-  }
-};
-
+  // Loading spinner while weather data is loading
   if (loading) {
     return (
       <View style={styles.container}>
@@ -163,6 +164,7 @@ const handleChangeLocation = async () => {
     );
   }
 
+  // Show message if location is not selected
   if (!locationId) {
     return (
       <View style={styles.container}>
@@ -171,6 +173,7 @@ const handleChangeLocation = async () => {
     );
   }
 
+  // Get correct icon image from weather icon number
   const getIconSource = (iconNumber: number) => {
     const formattedNumber = iconNumber < 10 ? `0${iconNumber}` : `${iconNumber}`;
     return weatherIcons[formattedNumber] || weatherIcons["01"];
@@ -182,6 +185,7 @@ const handleChangeLocation = async () => {
         contentContainerStyle={styles.container}
         style={{ opacity: fadeAnim }}
       >
+        {/* Current Weather Section */}
         <View style={styles.currentWeatherContainer}>
           <Image
             source={getIconSource(hourlyWeather[0]?.weatherIcon ?? 1)}
@@ -195,7 +199,8 @@ const handleChangeLocation = async () => {
           </Text>
         </View>
 
-        <Text style={styles.sectionTitle}>⏰ 12-Hour Forecast</Text>
+        {/* Hourly Forecast Cards */}
+        <Text style={styles.sectionTitle}>12-Hour Forecast</Text>
         <FlatList
           data={hourlyWeather}
           horizontal
@@ -214,9 +219,10 @@ const handleChangeLocation = async () => {
           )}
         />
 
+        {/* Temperature Line Chart */}
         {hourlyWeather.length > 0 && (
           <>
-            <Text style={styles.sectionTitle}>📈 Hourly Temperature</Text>
+            <Text style={styles.sectionTitle}>Hourly Temperature</Text>
             <LineChart
               data={{
                 labels: hourlyWeather.map((item) => item.hourLabel),
@@ -232,27 +238,15 @@ const handleChangeLocation = async () => {
               height={290}
               yAxisSuffix="°C"
               verticalLabelRotation={60}
-              chartConfig={{
-                backgroundColor: "#e3f2fd",
-                backgroundGradientFrom: "#e3f2fd",
-                backgroundGradientTo: "#bbdefb",
-                decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(0, 123, 255, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                style: { borderRadius: 16 },
-                propsForDots: {
-                  r: "4",
-                  strokeWidth: "2",
-                  stroke: "#1976d2",
-                },
-              }}
+              chartConfig={chartConfig}
               bezier
-              style={{ marginVertical: 16, borderRadius: 16 }}
+              style={chartStyle}
             />
           </>
         )}
 
-        <Text style={styles.sectionTitle}>🌤 5-Day Forecast</Text>
+        {/* Daily Forecast */}
+        <Text style={styles.sectionTitle}>5-Day Forecast</Text>
         {daysWeather.map((item, index) => (
           <Animated.View key={index} style={[styles.card, { opacity: fadeAnim }]}>
             <Text style={styles.date}>{item.dateTime}</Text>
@@ -277,6 +271,7 @@ const handleChangeLocation = async () => {
           </Animated.View>
         ))}
 
+        {/* Change location button */}
         <View style={{ marginTop: 24, marginBottom: 40 }}>
           <Button title="Change Location" onPress={handleChangeLocation} />
         </View>
