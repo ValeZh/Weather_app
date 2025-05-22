@@ -1,4 +1,36 @@
-import { StyleSheet, Platform, StatusBar } from "react-native";
+import { StyleSheet, Platform, StatusBar, Animated } from "react-native";
+
+// Анимация плавного появления
+export const fadeInAnimation = (fadeAnim: Animated.Value) =>
+  Animated.timing(fadeAnim, {
+    toValue: 1,
+    duration: 1000,
+    useNativeDriver: true,
+  });
+
+// Конфигурация графика для LineChart
+export const chartConfig = {
+  backgroundColor: "#e3f2fd",
+  backgroundGradientFrom: "#e3f2fd",
+  backgroundGradientTo: "#bbdefb",
+  decimalPlaces: 0,
+  color: (opacity = 1) => `rgba(0, 123, 255, ${opacity})`,
+  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+  style: {
+    borderRadius: 16,
+  },
+  propsForDots: {
+    r: "4",
+    strokeWidth: "2",
+    stroke: "#1976d2",
+  },
+};
+
+// Стилизация самого компонента LineChart
+export const chartStyle = {
+  marginVertical: 16,
+  borderRadius: 16,
+};
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -81,17 +113,17 @@ const styles = StyleSheet.create({
     marginBottom: 1,
   },
   currentWeatherIcon: {
-    width: 180, // увеличено
+    width: 180,
     height: 180,
     marginBottom: 14,
   },
   currentTemp: {
-    fontSize: 35, // увеличено
+    fontSize: 35,
     fontWeight: "bold",
     marginBottom: 8,
   },
   currentPhrase: {
-    fontSize: 20, // увеличено
+    fontSize: 20,
     fontStyle: "italic",
   },
 });

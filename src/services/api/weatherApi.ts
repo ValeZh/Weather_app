@@ -23,7 +23,7 @@ export const weatherApi = createApi({
     }),
     getTwelveHourForecast: builder.query<HourlyWeatherResponse, string>({
       query: (locationId) =>
-        `/forecasts/v1/hourly/12hour/${locationId}?apikey=${API_KEY}`, // Check if this endpoint is correct
+        `/forecasts/v1/hourly/12hour/${locationId}?apikey=${API_KEY}`,
     }),
   }),
 });

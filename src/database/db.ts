@@ -1,5 +1,5 @@
 import SQLite from "react-native-sqlite-storage";
-import type { HourlyForecast } from "../services/api/types";
+import type { HourlyForecast, DailyForecast } from "../services/api/types";
 
 const db = SQLite.openDatabase(
   { name: "weather.db", location: "default" },
@@ -7,7 +7,7 @@ const db = SQLite.openDatabase(
   (error) => console.error("❌ Database error: ", error)
 );
 
-// Создание таблиц
+// Create tables
 export const createTables = () => {
   db.transaction((tx) => {
     tx.executeSql(
@@ -46,7 +46,6 @@ export const createTables = () => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         location_id TEXT NOT NULL,
         fetchTime INTEGER NOT NULL,
-        dateTime TEXT NOT NULL,
         epochDateTime INTEGER NOT NULL,
         weatherIcon INTEGER NOT NULL,
         iconPhrase TEXT NOT NULL,
@@ -56,13 +55,13 @@ export const createTables = () => {
         precipitationProbability INTEGER NOT NULL
       )`,
       [],
-      () => console.log("✅ Таблица weather_12_hours создана!"),
-      (error) => console.error("❌ Ошибка при создании weather_12_hours:", error)
+      () => console.log("✅ weather_12_hours table created (without dateTime)!"),
+      (error) => console.error("❌ Error creating weather_12_hours table:", error)
     );
   });
 };
 
-export const saveWeatherData = async (locationId: string, weatherItems: any[]) => {
+export const saveWeatherData = async (locationId: string, weatherItems: DailyForecast[]) => {
   return new Promise<void>((resolve, reject) => {
     const fetchTime = Date.now();
 
@@ -71,9 +70,9 @@ export const saveWeatherData = async (locationId: string, weatherItems: any[]) =
         tx.executeSql(
           `DELETE FROM weather WHERE location_id = ?`,
           [locationId],
-          () => console.log(`🗑 Старі записи видалено для location_id = ${locationId}`),
+          () => console.log(`🗑 Old records deleted for location_id = ${locationId}`),
           (_, error) => {
-            console.error("❌ Помилка при видаленні старих записів:", error);
+            console.error("❌ Error deleting old weather records:", error);
             return false;
           }
         );
@@ -85,35 +84,35 @@ export const saveWeatherData = async (locationId: string, weatherItems: any[]) =
               dayTemperature, nightTemperature,
               dayPhrase, nightPhrase,
               weatherIdDay, weatherIdNight,
-              HasPrecipitationDay, HasPrecipitationNight
+              hasPrecipitationDay, hasPrecipitationNight
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               locationId,
               fetchTime,
-              item.epochDate,
-              item.dayTemperature,
-              item.nightTemperature,
-              item.dayPhrase,
-              item.nightPhrase,
-              item.weatherIdDay,
-              item.weatherIdNight,
-              item.hasPrecipitationDay,
-              item.hasPrecipitationNight
+              item.EpochDate,
+              item.Temperature.Maximum.Value,
+              item.Temperature.Minimum.Value,
+              item.Day.IconPhrase,
+              item.Night.IconPhrase,
+              item.Day.Icon,
+              item.Night.Icon,
+              item.Day.HasPrecipitation ? 1 : 0,
+              item.Night.HasPrecipitation ? 1 : 0
             ],
-            () => console.log("✅ Додано прогноз:", item),
+            () => console.log("✅ Forecast added:", item.Date),
             (_, error) => {
-              console.error("❌ Помилка при додаванні прогнозу:", error);
+              console.error("❌ Error inserting forecast:", error);
               return false;
             }
           );
         }
       },
       (error) => {
-        console.error("❌ Помилка транзакції збереження:", error);
+        console.error("❌ Weather transaction error:", error);
         reject(error);
       },
       () => {
-        console.log("✅ Усі прогнози збережені.");
+        console.log("✅ All forecasts saved.");
         logWeatherTable();
         resolve();
       }
@@ -130,9 +129,9 @@ export const saveHourlyWeatherData = async (locationId: string, hourlyData: Hour
         tx.executeSql(
           `DELETE FROM weather_12_hours WHERE location_id = ?`,
           [locationId],
-          () => console.log(`🗑 Старі записи (12 год) видалено для location_id = ${locationId}`),
+          () => console.log(`🗑 Old 12-hour records deleted for location_id = ${locationId}`),
           (_, error) => {
-            console.error("❌ Ошибка при удалении данных 12-часового прогноза:", error);
+            console.error("❌ Error deleting 12-hour records:", error);
             return false;
           }
         );
@@ -140,35 +139,34 @@ export const saveHourlyWeatherData = async (locationId: string, hourlyData: Hour
         for (const item of hourlyData) {
           tx.executeSql(
             `INSERT INTO weather_12_hours (
-              location_id, fetchTime, dateTime, epochDateTime, weatherIcon, iconPhrase,
+              location_id, fetchTime, epochDateTime, weatherIcon, iconPhrase,
               hasPrecipitation, isDaylight, temperatureValue, precipitationProbability
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               locationId,
               fetchTime,
-              item.DateTime,
               item.EpochDateTime,
               item.WeatherIcon,
               item.IconPhrase,
-              item.HasPrecipitation ? 1 : 0,
-              item.IsDaylight ? 1 : 0,
+              item.HasPrecipitation,
+              item.IsDaylight,
               item.Temperature.Value,
               item.PrecipitationProbability
             ],
-            () => console.log("✅ Додано погодинний прогноз:", item.DateTime),
+            () => console.log("✅ Hourly forecast added:", item.EpochDateTime),
             (_, error) => {
-              console.error("❌ Помилка при додаванні погодинного прогнозу:", error);
+              console.error("❌ Error inserting hourly forecast:", error);
               return false;
             }
           );
         }
       },
       (error) => {
-        console.error("❌ Помилка транзакції погодинного збереження:", error);
+        console.error("❌ Hourly forecast transaction error:", error);
         reject(error);
       },
       () => {
-        console.log("✅ Усі 12-годинні прогнози збережені.");
+        console.log("✅ All 12-hour forecasts saved.");
         logWeather12HoursTable();
         resolve();
       }
@@ -184,11 +182,11 @@ export const loadWeatherData = (locationId: string) => {
         [locationId],
         (_, results) => {
           const rows = results.rows.raw();
-          console.log("📤 Дані з SQLite:", rows);
+          console.log("📤 Weather data loaded from SQLite:", rows);
           resolve(rows);
         },
         (error) => {
-          console.error("❌ Помилка при завантаженні погоди:", error);
+          console.error("❌ Error loading weather data:", error);
           reject(error);
         }
       );
@@ -204,11 +202,11 @@ export const loadHourlyWeatherData = (locationId: string) => {
         [locationId],
         (_, results) => {
           const rows = results.rows.raw();
-          console.log("📤 Дані з weather_12_hours:", rows);
+          console.log("📤 12-hour weather data loaded from SQLite:", rows);
           resolve(rows);
         },
         (error) => {
-          console.error("❌ Помилка при завантаженні 12-годинного прогнозу:", error);
+          console.error("❌ Error loading 12-hour forecast:", error);
           reject(error);
         }
       );
@@ -227,7 +225,7 @@ export const checkLastFetchTime = (locationId: string) => {
           resolve(rows.length > 0 ? rows[0].lastFetchTime : 0);
         },
         (error) => {
-          console.error("❌ Помилка перевірки часу останнього запиту:", error);
+          console.error("❌ Error checking last fetch time:", error);
           reject(error);
         }
       );
@@ -249,7 +247,7 @@ export const updateLastFetchTime = (locationId: string) => {
         console.log("🔄 Last fetch time updated!");
         logLastFetchTable();
       },
-      (error) => console.error("❌ Помилка оновлення часу останнього запиту:", error)
+      (error) => console.error("❌ Error updating last fetch time:", error)
     );
   });
 };
@@ -261,10 +259,10 @@ const logWeatherTable = () => {
       [],
       (_, results) => {
         const rows = results.rows.raw();
-        console.log("📋 Содержимое таблицы weather:", rows);
+        console.log("📋 Weather table content:", rows);
       },
       (error) => {
-        console.error("❌ Ошибка при логировании таблицы weather:", error);
+        console.error("❌ Error logging weather table:", error);
       }
     );
   });
@@ -277,10 +275,10 @@ const logWeather12HoursTable = () => {
       [],
       (_, results) => {
         const rows = results.rows.raw();
-        console.log("📋 Содержимое таблицы weather_12_hours:", rows);
+        console.log("📋 weather_12_hours table content:", rows);
       },
       (error) => {
-        console.error("❌ Ошибка при логировании таблицы weather_12_hours:", error);
+        console.error("❌ Error logging weather_12_hours table:", error);
       }
     );
   });
@@ -293,11 +291,58 @@ const logLastFetchTable = () => {
       [],
       (_, results) => {
         const rows = results.rows.raw();
-        console.log("📋 Содержимое таблицы last_fetch_time:", rows);
+        console.log("📋 last_fetch_time table content:", rows);
       },
       (error) => {
-        console.error("❌ Ошибка при логировании таблицы last_fetch_time:", error);
+        console.error("❌ Error logging last_fetch_time table:", error);
       }
     );
   });
+};
+
+export const clearAllWeatherDataForLocation = (locationId: string) => {
+  if (!locationId) {
+    console.warn("⚠️ Attempted to clear data for empty locationId.");
+    return;
+  }
+
+  db.transaction(
+    (tx) => {
+      tx.executeSql(
+        `DELETE FROM weather WHERE location_id = ?`,
+        [locationId],
+        () => console.log(`🧹 Cleared weather for location_id = ${locationId}`),
+        (_, error) => {
+          console.error("❌ Error clearing weather table:", error);
+          return false;
+        }
+      );
+
+      tx.executeSql(
+        `DELETE FROM weather_12_hours WHERE location_id = ?`,
+        [locationId],
+        () => console.log(`🧹 Cleared weather_12_hours for location_id = ${locationId}`),
+        (_, error) => {
+          console.error("❌ Error clearing weather_12_hours table:", error);
+          return false;
+        }
+      );
+
+      tx.executeSql(
+        `DELETE FROM last_fetch_time WHERE locationId = ?`,
+        [locationId],
+        () => console.log(`🧹 Cleared last_fetch_time for location_id = ${locationId}`),
+        (_, error) => {
+          console.error("❌ Error clearing last_fetch_time table:", error);
+          return false;
+        }
+      );
+    },
+    (error) => {
+      console.error("❌ Transaction error during full data clear:", error);
+    },
+    () => {
+      console.log("✅ All weather-related tables cleared for locationId:", locationId);
+    }
+  );
 };
